@@ -1,0 +1,7 @@
+Direct3D 12 is a rendering library for writing high-performance 3D graphics applications using modern graphics hardware on
+various Windows 10 platforms (Windows Desktop, Mobile, and Xbox One). Direct3D is a low-level library in the sense that its
+application programming interface (API) closely models the underlying graphics hardware it controls.
+
+In addition, with every new PC being equipped with a modern graphics card, non-3D applications are beginning to take advantage
+of the GPU (graphics processing unit) to offload work to the graphics card for intensive calculations; this is known as
+general purpose GPU computing, and Direct3D provides the compute shader API for writing general purpose GPU programs.
