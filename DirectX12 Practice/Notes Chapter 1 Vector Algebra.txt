@@ -1,0 +1,144 @@
+A vector refers to a quantity that possesses both magnitude and direction. Quantities that possess both magnitude and
+direction are called vector-valued quantities. Examples of vector-valued quantities are forces (a force is applied in a
+particular direction with a certain strength-magnitude), displacements (the net direction and distance a particle moved), and
+velocities (speed and direction).
+
+Thus, vectors are used to represent forces, displacements, and velocities. In addition, we also use vectors to specify pure
+directions, such as the direction the player is looking in a 3D game, the direction a polygon is facing, the direction in
+which a ray of light travels, or the direction in which a ray of light reflects off a surface.
+
+A first step in characterizing a vector mathematically is geometrically: We graphically specify a vector by a directed line
+segment (see Figure 1.1), where the length denotes the magnitude of the vector and the aim denotes the direction of the vector.
+We note that the location in which we draw a vector is immaterial because changing the location does not change the magnitude
+or direction (the two properties a vector possesses). Therefore, we say two vectors are equal if and only if they have the same
+length and they point in the same direction.
+
+In fact, because location is unimportant for vectors, we can always translate a vector without changing its meaning (since a
+translation changes neither length nor direction).
+
+Water boils at 100 degrees Celsius or 212 degrees Fahrenheit. The physical temperature of boiling water is the same no matter
+the scale (i.e., we can't lower the boiling point by picking a different scale), but we assign a different scalar number to the
+temperature based on the scale we use. Similarly, for a vector, its direction and magnitude, which are embedded in the 
+directed line segment, does not change; only the coordinates of it change based on the frame of reference we use to describe
+it. This is important because it means whenever we identify a vector by coordinates, those coordinates are relative to some
+frame of reference.
+
+Direct3D uses a so-called left-handed coordinate system. For example, on the left we have a left-handed coordinate system.
+Observe that the positive z-axis goes into the page. On the right we have a right-handed coordinate system. Observe that the
+positive z-axis comes out of the page.
+
+We can multiply a scalar (i.e., a real number) and a vector and the result is a vector. Let k be a scalar, then ku = (kux,
+kuy, kuz). This is called scalar multiplication.
+
+Observe also that our rules of vector addition agree with what we would intuitively expect to happen physically when we add
+forces together to produce a net force: If we add two forces (vectors) in the same direction, we get another stronger net
+force (longer vector) in that direction. If we add two forces (vectors) in opposition to each other, then we get a weaker net
+force (shorter vector).
+
+Geometrically, the magnitude of a vector is the length of the directed line segment. We denote the magnitude of a vector by
+double vertical bars (e.g., ||u|| denotes the magnitude of u).
+
+The dot product is a form of vector multiplication that results in a scalar value; for this reason, it is sometimes referred
+to as the scalar product (e.g. u*v = ux*vx + uy*vy + uz*vz). In words, the dot product is the sum of the products of the
+corresponding components.
+
+Geometric properties of the dot product:
+1. If u * v = 0, then u | v (i.e., the vectors are orthogonal).
+2. If u * v > 0, then the angle theta between the two vectors is less than 90 degrees (e.g., the vectors make an acute angle).
+3. If u * v < 0, the angle theta between the two vectors is greater than 90 degrees (e.g., the vectors make an obtuse angle).
+
+Note: The word "orthogonal" can be used as a synonym for "perpendicular." 
+
+A set of vectors {v0, ..., vn-1} is called orthonormal if the vectors are mutually orthogonal (every vector in the set is
+orthogonal to every other vector in the set) and unit length.
+
+The second form of multiplication vector math defines is the cross product. Unlike the dot product, which evaluates to a
+scalar, the cross product evaluates to another vector; moreover, the cross product is only defined for 3D vectors(in
+particular, there is no 2D cross product). Taking the cross product of two 3D vectors u and v yields another vector, w that
+is mutually orthogonal to u and v. By that we mean w is orthogonal to u, and w is orthogonal to v. For example, w = u*v = 
+(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx).
+
+On the other hand, some operations can be extended to points. For example, we define the difference of two points q-p to be
+the vector from p to q. Also, we define a point p plus a vector v to be the point q obtained by displacing p by the vector v.
+
+For Windows 8 and above, DirectX Math is a 3D math library for Direct3D application that is part of the Windows SDK. The
+library uses the SSE2 (Streaming SIMD Extensions 2) instruction set. With 128-bit wide SIMD (single instruction multiple data)
+registers, SIMD instructions can operate on four 32-bit floats or ints with one instruction.
+
+In addition, for the x86 platform you should enable SSE2 (Project Properties > Configuration Properties > C/C++ > 
+Code Generation > Enable Enhanced Instruction Set), and for all platforms you should enable the fast floating point model 
+/fp:fast (Project Properties > Configuration Properties > C/C++ > Code Generation > Floating Point Model). You do not need to
+enable SSE2 for the x64 platform because all x64 CPUs support SSE2.
+
+In DirectX Math, the core vector type is XMVECTOR, which maps to SIMD hardware registers. This is a 128-bit type that can
+process four 32-bit floats with a single SIMD instruction. When SSE2 is available, it is defined like so for x86 and x64 
+platforms: typedef __m128 XMVECTOR;
+
+However, if we use these types (XMLFLOATn) directly for calculations, then we will not take advantage of SIMD. In order to
+use SIMD, we need to convert instances of these types into the XMVECTOR type. This is done with the DirectX Math loading 
+functions. Conversely, DirectX Math provides storage functions which are used to convert data from XMVECTOR into the XMFLOATn
+types above.
+
+1. Use XMVECTOR for local or global variables.
+2. Use XMFLOAT2, XMFLOAT3, and XMFLOAT4 for class data members.
+3. Use loading functions to convert from XMFLOATn to XMVECTOR before doing calculations.
+4. Do calculations with XMVECTOR instances.
+5. Use storage functions to convert from XMVECTOR to XMFLOATn.
+
+We use the following methods to load data from XMFLOATn into XMVECTOR:
+
+// Loads XMFLOAT2 into XMVECTOR
+XMVECTOR XM_CALLCONV XMLoadFloat2(const XMFLOAT2 *pSource);
+
+// Loads XMFLOAT3 into XMVECTOR
+XMVECTOR XM_CALLCONV XMLoadFloat3(const XMFLOAT3 *pSource);
+
+// Loads XMFLOAT4 into XMVECTOR
+XMVECTOR XM_CALLCONV XMLoadFloat4(const XMFLOAT4 *pSource);
+
+We use the following methods to store data from XMVECTOR into XMFLOATn:
+
+// Loads XMVECTOR into XMFLOAT2
+void XM_CALLCONV XMStoreFloat2(XMFLOAT2 *pDestination, FXMVECTOR V);
+
+// Loads XMVECTOR into XMFLOAT3
+void XM_CALLCONV XMStoreFloat3(XMFLOAT3 *pDestination, FXMVECTOR V);
+
+// Loads XMVECTOR into XMFLOAT4
+void XM_CALLCONV XMStoreFloat4(XMFLOAT4 *pDestination, FXMVECTOR V);
+
+Sometimes we just want to get or set one component of an XMVECTOR; the following getter and setter functions facilitate this:
+
+float XM_CALLCONV XMVectorGetX(FXMVECTOR V);
+float XM_CALLCONV XMVectorGetY(FXMVECTOR V);
+float XM_CALLCONV XMVectorGetZ(FXMVECTOR V);
+float XM_CALLCONV XMVectorGetW(FXMVECTOR V);
+
+XMVECTOR XM_CALLCONV XMVectorSetX(FXMVECTOR V, float x);
+XMVECTOR XM_CALLCONV XMVectorSetY(FXMVECTOR V, float y);
+XMVECTOR XM_CALLCONV XMVectorSetZ(FXMVECTOR V, float z);
+XMVECTOR XM_CALLCONV XMVectorSetW(FXMVECTOR V, float w);
+
+For efficiency purposes, XMVECTOR values can be passed as arguments to functions in SSE/SSE2 registers instead of on the
+stack. The number of arguments that can be passed this way depends on the platform (e.g., 32-bit Windows, 64-bit Windows, and
+Windows RT) and compiler. Therefore, to be platform/compiler independent, we use the types FXMVECTOR, GXMVECTOR, HXMVECTOR and
+CXMVECTOR for passing XMVECTOR parameters; these are defined to the right type based on the platform and compiler. Furthermore,
+the calling convention annotation XM_CALLCONV must be specified before the function name so that the proper calling convention
+is used, which again depends on the compiler version.
+
+The rules for passing XMVECTOR parameters are as follows:
+
+1. The first three XMVECTOR parameters should be of type FXMVECTOR;
+2. The fourth XMVECTOR should be of type GXMVECTOR;
+3. The fifth and sixth XMVECTOR parameter should be of type HXMVECTOR;
+4. Any additional XMVECTOR parameters should be of type CXMVECTOR.
+
+When comparing floating-point numbers, care must be taken due to floating-point imprecision. Two floating-point numbers that
+we expect to be equal may differ slightly. For example, mathematically, we’d expect a normalized vector to have a length of 1,
+but in a computer program, the length will only be approximately 1. Moreover, mathematically, 1p = 1 for any real number p, but
+when we only have a numerical approximation for 1, we see that the approximation raised to the pth power increases the error;
+thus, numerical error also accumulates.
+
+To compensate for fl oating-point imprecision, we test if two floating-point numbers are approximately equal. We do this by
+defi ning an Epsilon constant, which is a very small value we use as a “buffer." We say two values are approximately equal if
+their distance is less than Epsilon. In other words, Epsilon gives us some tolerance for floating-point imprecision. 

@@ -1,3 +1,9 @@
+/* I'm trying to learn DirectX12 through this PDF (APA references):
+
+	
+	Luna. F. (2016). Introduction to 3D Game Programming with DirectX 12. MERCURY LEARNING AND INFORMATION LLC.
+*/
+
 Direct3D 12 is a rendering library for writing high-performance 3D graphics applications using modern graphics hardware on
 various Windows 10 platforms (Windows Desktop, Mobile, and Xbox One). Direct3D is a low-level library in the sense that its
 application programming interface (API) closely models the underlying graphics hardware it controls.

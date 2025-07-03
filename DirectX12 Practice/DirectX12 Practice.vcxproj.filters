@@ -39,9 +39,15 @@
     <ClCompile Include="Common\MathHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Chapter1.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="Notes.txt">
+    <Text Include="Notes Introduction to DirectX12.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Notes Chapter 1 Vector Algebra.txt">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>
