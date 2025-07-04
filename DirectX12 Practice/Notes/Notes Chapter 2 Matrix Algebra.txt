@@ -1,0 +1,57 @@
+In 3D computer graphics, we use matrices to compactly describe geometric transformations such as scaling, rotation, and
+translation, and also to change the coordinates of a point or vector from one frame to another.
+
+An m x n matrix M is a rectangular array of real numbers with m rows and n columns. The product of the number of rows and
+columns gives the dimensions of the matrix. The numbers in a matrix are called elements or entries. We identify a matrix
+element by specifying the row and column of the element using a double subscript notation Mij, where the first subscript
+identifies the row and the second subscript identifies the column. 
+
+The matrices u and v are special matrices in the sense that they contain a single row or column, respectively. We sometimes
+call these kinds of matrices row vectors or column vectors because they are used to represent a vector in matrix form (e.g.,
+we can freely interchange the vector notations (x, y, z) and [x, y, z]).
+
+1. Two matrices are equal if and only if their corresponding elements are equal; as such, two matrices must have the same
+number of rows and columns in order to be compared.
+
+2. We add two matrices by adding their corresponding elements; as such, it only makes sense to add matrices that the same
+number of rows and columns.
+
+3. We multiply a scalar and a matrix by multiplying the scalar with every element in the matrix.
+
+4. We define subtraction in terms of matrix addition and scalar multiplication. That is, A - B = A + (-1 x B) = A + (-B).
+
+Because addition and scalar multiplication is done element-wise, matrices essentially inherit the following addition and
+scalar multiplication properties from real numbers:
+
+1. A + B = B + A - Commutative law of addition
+2. (A + B) + C = A + (B + C) - Associative law of addition
+3. r(A + B) = rA + rB - Scalar distribution over matrices
+4. (r + s)A = rA + sA - Matrix distribution over scalars
+
+If A is a m x n matrix and B is a n x p matrix, then the product AB is defined and is a m x p matrix C, where the ijth entry
+of the product C is given by taking the dot product of the ith row vector in A with the jth column vector in B, that is,
+Cij = A  i,*  x B *,j (equation 2.1) (x means times/multiply by).
+
+So note that in order for the matrix product AB to be defined, we require that the number of columns in A equal the number of
+rows in B, which is to say, we require that the dimension of the row vectors in A equal the dimension of the column vectors in
+B. If these dimensions did not match, then the dot product in Equation 2.1 would not make sense.
+
+The product AB is not defined since the row vectors in A have dimension 2 and the column vectors in B have dimension 3. In
+particular, we cannot take the dot product of the first row vector in A with the first column vector in B because we cannot
+take the dot product of a 2D vector with a 3D vector.
+
+We first point out that the product AB is defined (and is a 2 x 3 matrix) because the number of columns of A equals the number
+of rows of B. Observe that the product BA is not defined because the number of columns in B does not equal the number of rows
+in A. This demonstrates that, in general, matrix multiplication is not commutative; that is, AB != BA.
+
+The transpose of a matrix is found by interchanging the rows and columns of the matrix. Thus the transpose of an m x n matrix
+is an n x m matrix. We denote the transpose of a matrix M as MT.
+
+The identity matrix is a square matrix that has zeros for all elements except along the main diagonal; the elements along the
+main diagonal are all ones. (e.g. 1, 0 (first row), 0, 1 (second row))
+
+The determinant is a special function which inputs a square matrix and outputs a real number. The determinant of a square
+matrix A is commonly denoted by det A.
+
+Given an n x n matrix A, the minor matrix Aij is the (n-1) x (n-1) matrix found by deleting the ith row and jth column of A.
+

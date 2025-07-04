@@ -143,12 +143,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="Notes Chapter 1 Vector Algebra.txt" />
-    <Text Include="Notes Introduction to DirectX12.txt" />
+    <Text Include="Notes\Notes Chapter 1 Vector Algebra.txt" />
+    <Text Include="Notes\Notes Chapter 2 Matrix Algebra.txt" />
+    <Text Include="Notes\Notes Introduction to DirectX12.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoxApp.cpp" />
     <ClCompile Include="Chapter1.cpp" />
+    <ClCompile Include="Chapter2.cpp" />
     <ClCompile Include="Common\Camera.cpp" />
     <ClCompile Include="Common\d3dApp.cpp" />
     <ClCompile Include="Common\d3dUtil.cpp" />
