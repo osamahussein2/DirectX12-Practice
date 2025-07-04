@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="Notes\Notes Chapter 3 Transformations.txt" />
     <Text Include="Notes\Notes Chapter 1 Vector Algebra.txt" />
     <Text Include="Notes\Notes Chapter 2 Matrix Algebra.txt" />
     <Text Include="Notes\Notes Introduction to DirectX12.txt" />

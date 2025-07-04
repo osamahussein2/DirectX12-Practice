@@ -56,6 +56,9 @@
     <Text Include="Notes\Notes Chapter 2 Matrix Algebra.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="Notes\Notes Chapter 3 Transformations.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common\Camera.h">

@@ -1,0 +1,35 @@
+A linear transformation can consist of input and output values other than 3D vectors.
+
+The vectors i = (1, 0, 0), j = (0, 1, 0), and k = (0, 0, 1), which are unit vectors that aim along the working coordinate
+axes, respectively, are called the standard basis vectors for R^3. (R^3 denotes the set of all 3D coordinate vectors (x, y, z)).
+
+Scaling refers to changing the size of an object.
+
+However, translation does not make sense for vectors because a vector only describes direction and magnitude, independent of
+location; in other words, vectors should be unchanged under translations. Translations should only be applied to points (i.e.,
+position vectors).
+
+Homogeneous coordinates provide a convenient notational mechanism that enables us to handle points and vectors uniformly. With
+homogeneous coordinates, we augment to 4-tuples and what we place in the fourth w-coordinate depends on whether we are
+describing a point or vector. Specifically, we write:
+
+1. (x, y, z, 0) for vectors
+2. (x, y, z, 1) for points
+
+We will see later that setting w = 1 for points allows translations of points to work correctly, and setting w = 0 for vectors
+prevents the coordinates of vectors from being modified by translations (we do not want to translate the coordinates of a 
+vector, as that would change its direction and magnitude—translations should not alter the properties of vectors).
+
+To review so far, the vector and point change of coordinate transformations are:
+(x', y', z') = x*uB + y*vB + z*wB for vectors
+(x', y', z') = x*uB + y*vB + z*wB + QB for points
+
+If we use homogeneous coordinates, then we can handle vectors and points by one equation:
+(x', y', z', w) = x*uB + y*vB + z*wB + w*QB
+
+If w = 0, then this equation reduces to the change of coordinate transformation for vectors; if w = 1, then this equation
+reduces to the change of coordinate transformation for points.
+
+For DirectX Math functions, XMVector3TransformCoord and XMVector3TransformNormal, you do not need to explicitly set the w
+coordinate. The functions will always use vw = 1 and vw = 0 for XMVector3TransformCoord and XMVector3TransformNormal,
+respectively.
