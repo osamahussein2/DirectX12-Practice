@@ -45,6 +45,9 @@
     <ClCompile Include="Chapter2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Chapter4.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\Notes Introduction to DirectX12.txt">
@@ -57,6 +60,9 @@
       <Filter>Resource Files</Filter>
     </Text>
     <Text Include="Notes\Notes Chapter 3 Transformations.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Notes\Notes Chapter 4 DirectX Initialization.txt">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>

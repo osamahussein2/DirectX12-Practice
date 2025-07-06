@@ -1,0 +1,193 @@
+Direct3D is a low-level graphics API (application programming interface) used to control and program the GPU (graphics
+processing unit) from our application, thereby allowing us to render virtual 3D worlds using hardware acceleration. For
+example, to submit a command to the GPU to clear a render target (e.g., the screen), we would call the Direct3D method
+ID3D12CommandList::ClearRenderTargetView.
+
+The Direct3D layer and hardware drivers will translate the Direct3D commands into native machine instructions understood by
+the system’s GPU; thus, we do not have to worry about the specifics of the GPU, so long as it supports the Direct3D version we
+are using. To make this work, GPU vendors like NVIDIA, Intel, and AMD must work with the Direct3D team and provide compliant
+Direct3D drivers.
+
+Component Object Model (COM) is the technology that allows DirectX to be programming-language independent and have backwards
+compatibility.
+
+To help manage the lifetime of COM objects, the Windows Runtime Library (WRL) provides the Microsoft::WRL::ComPtr class
+(#include <wrl.h>), which can be thought of as a smart pointer for COM objects. When a ComPtr instance goes out of scope, it
+will automatically call Release on the underlying COM object, thereby saving us from having to manually call Release.
+
+A 2D texture is a matrix of data elements. One use for 2D textures is to store 2D image data, where each element in the
+texture stores the color of a pixel. However, this is not the only usage; for example, in an advanced technique called
+normal mapping, each element in the texture stores a 3D vector instead of a color. 
+
+1. DXGI_FORMAT_R32G32B32_FLOAT: Each element has three 32-bit floating-point components.
+2. DXGI_FORMAT_R16G16B16A16_UNORM: Each element has four 16-bit components mapped to the [0, 1] range.
+3. DXGI_FORMAT_R32G32_UINT: Each element has two 32-bit unsigned integer components.
+4. DXGI_FORMAT_R8G8B8A8_UNORM: Each element has four 8-bit unsigned components mapped to the [0, 1] range.
+5. DXGI_FORMAT_R8G8B8A8_SNORM: Each element has four 8-bit signed components mapped to the [-1, 1] range.
+6. DXGI_FORMAT_R8G8B8A8_SINT: Each element has four 8-bit signed integer components mapped to the [-128, 127] range.
+7. DXGI_FORMAT_R8G8B8A8_UINT: Each element has four 8-bit unsigned integer components mapped to the [0, 255] range.
+
+To avoid flickering in animation, it is best to draw an entire frame of animation into an off-screen texture called the back
+buffer. Once the entire scene has been drawn to the back buffer for the given frame of animation, it is presented to the
+screen as one complete frame; in this way, the viewer does not watch as the frame gets drawn—the viewer only sees complete
+frames.
+
+To implement this, two texture buffers are maintained by the hardware, one called the front buffer and a second called the
+back buffer. The front buffer stores the image data currently being displayed on the monitor, while the next frame of
+animation is being drawn to the back buffer.
+
+After the frame has been drawn to the back buffer, the roles of the back buffer and front buffer are reversed: the back buffer
+becomes the front buffer and the front buffer becomes the back buffer for the next frame of animation. Swapping the roles of
+the back and front buffers is called presenting. Presenting is an efficient operation, as the pointer to the current front
+buffer and the pointer to the current back buffer just need to be swapped.
+
+Using two buffers (front and back) is called double buffering. More than two buffers can be employed; using three buffers is
+called triple buffering. Two buffers are usually sufficient, however.
+
+Even though the back buffer is a texture (so an element should be called a texel), we often call an element a pixel since, in
+the case of the back buffer, it stores color information. Sometimes people will call an element of a texture a pixel, even if
+it doesn’t store color information (e.g., "the pixels of a normal map).
+
+The depth buffer is an example of a texture that does not contain image data, but rather depth information about a particular
+pixel. The possible depth values range from 0.0 to 1.0, where 0.0 denotes the closest an object in the view frustum can
+be to the viewer and 1.0 denotes the farthest an object in the view frustum can be from the viewer.
+
+In order for Direct3D to determine which pixels of an object are in front of another, it uses a technique called depth
+buffering or z-buffering.
+
+We only update the pixel and its corresponding depth value in the depth buffer when we find a pixel with a smaller depth value.
+In this way, after all is said and done, the pixel that is closest to the viewer will be the one rendered.
+
+The depth test compares the depths of pixels competing to be written to a particular pixel location on the back buffer. The
+pixel with the depth value closest to the viewer wins, and that is the pixel that gets written to the back buffer. This makes
+sense because the pixel closest to the viewer obscures the pixels behind it. The depth buffer is a texture, so it must be
+created with certain data formats.
+
+The formats used for depth buffering are as follows:
+
+1. DXGI_FORMAT_D32_FLOAT_S8X24_UINT: Specifies a 32-bit floating-point depth buffer, with 8-bits (unsigned integer) reserved
+for the stencil buffer mapped to the [0, 255] range and 24-bits not used for padding.
+
+2. DXGI_FORMAT_D32_FLOAT: Specifies a 32-bit floating-point depth buffer.
+
+3. DXGI_FORMAT_D24_UNORM_S8_UINT: Specifies an unsigned 24-bit depth buffer mapped to the [0, 1] range with 8-bits (unsigned
+integer) reserved for the stencil buffer mapped to the [0, 255] range.
+
+4. DXGI_FORMAT_D16_UNORM: Specifies an unsigned 16-bit depth buffer mapped to the [0, 1] range.
+
+During the rendering process, the GPU will write to resources (e.g., the back buffer, the depth/stencil buffer), and read from
+resources (e.g., textures that describe the appearance of surfaces, buffers that store the 3D positions of geometry in the
+scene). Before we issue a draw command, we need to bind (or link) the resources to the rendering pipeline that are going to be
+referenced in that draw call.
+
+A descriptor heap is an array of descriptors; it is the memory backing for all the descriptors of a particular type your
+application uses.
+
+When increasing the monitor resolution is not possible or not enough, we can apply antialiasing techniques. One technique,
+called supersampling, works by making the back buffer and depth buffer 4X bigger than the screen resolution. The 3D scene is
+then rendered to the back buffer at this larger resolution. Then, when it comes time to present the back buffer to the screen,
+the back buffer is resolved (or downsampled) such that 4 pixel block colors are averaged together to get an averaged pixel
+color. In effect, supersampling works by increasing the resolution in software.
+
+Supersampling is expensive because it increases the amount of pixel processing and memory by fourfold. Direct3D supports a
+compromising antialiasing technique called multisampling, which shares some computational information across subpixels making
+it less expensive than supersampling.
+
+With supersampling, the image color is computed per subpixel, and so each subpixel could potentially be a different color. With
+multisampling, the image color is computed once per pixel and that color is replicated into all visible subpixels that are
+covered by the polygon. Because computing the image color is one of the most expensive steps in the graphics pipeline, the
+savings from multisampling over supersampling is significant. On the other hand, supersampling is more accurate.
+
+We can query the number of quality levels for a given texture format and sample count using the
+ID3D12Device::CheckFeatureSupport method.
+
+In Direct3D 12, applications manage resource residency (essentially, whether a resource is in GPU memory) by evicting resources
+from GPU memory and then making them resident on the GPU again as needed. The basic idea is to minimize how much GPU memory the
+application is using because there might not be enough to store every resource for the entire game, or the user has other
+applications running that require GPU memory. As a performance note, the application should avoid the situation of swapping the
+same resources in and out of GPU memory within a short time frame, as there is overhead for this.
+
+We must understand that with graphics programming we have two processors at work: the CPU and GPU. They work in parallel and
+sometimes need to be synchronized. For optimal performance, the goal is to keep both busy for as long as possible and minimize
+synchronizations. Synchronizations are undesirable because it means one processing unit is idle while waiting on the other to
+finish some work; in other words, it ruins the parallelism.
+
+The GPU has a command queue. The CPU submits commands to the queue through the Direct3D API using command lists. It is
+important to understand that once a set of commands have been submitted to the command queue, they are not immediately
+executed by the GPU. They sit in the queue until the GPU is ready to process them, as the GPU is likely busy processing
+previously inserted commands.
+
+If the command queue gets empty, the GPU will idle because it does not have any work to do; on the other hand, if the command
+queue gets too full, the CPU will at some point have to idle while the GPU catches up. Both of these situations are
+undesirable; for high performance applications like games, the goal is to keep both CPU and GPU busy to take full advantage
+of the hardware resources available.
+
+The idea of a command allocator reset method is analogous to calling std::vector::clear, which resizes a vector back to zero,
+but keeps the current capacity the same. However, because the command queue may be referencing data in an allocator, a command
+allocator must not be reset until we are sure the GPU has finished executing all the commands in the allocator.
+
+Adding commands to the command queue does not block the CPU, so the CPU continues on. It would be an error for the CPU to
+continue on and overwrite the data of R to store a new position p2 before the GPU executed the draw command C, for instance.
+
+One solution to this situation is to force the CPU to wait until the GPU has finished processing all the commands in the queue
+up to a specified fence point. We call this flushing the command queue. We can do this using a fence. A fence is represented by
+the ID3D12Fence interface and is used to synchronize the GPU and CPU.
+
+A fence object maintains a UINT64 value, which is just an integer to identify a fence point in time. We start at value zero
+and every time we need to mark a new fence point, we just increment the integer.
+
+The following subsections show how to initialize Direct3D for our demo framework. It is a long process, but only needs to be
+done once. Our process of initializing Direct3D can be broken down into the following steps:
+
+1. Create the ID3D12Device using the D3D12CreateDevice function.
+2. Create an ID3D12Fence object and query descriptor sizes.
+3. Check 4X MSAA quality level support.
+4. Create the command queue, command list allocator, and main command list.
+5. Describe and create the swap chain.
+6. Create the descriptor heaps the application requires.
+7. Resize the back buffer and create a render target view to the back buffer.
+8. Create the depth/stencil buffer and its associated depth/stencil view.
+9. Set the viewport and scissor rectangles.
+
+The device represents a display adapter. Usually, the display adapter is a physical piece of 3D hardware (e.g., graphics card);
+however, a system can also have a software display adapter that emulates 3D hardware functionality (e.g., the WARP adapter).
+The Direct3D 12 device is used to check feature support, and create all other Direct3D interface objects like resources, views,
+and command lists.
+
+CreateDevice() common flags and options for beginners:
+
+1. BufferDesc: This structure describes the properties of the back buffer we want to create. The main properties we are
+concerned with are the width and height, and pixel format.
+
+2. SampleDesc: The number of multisamples and quality level. For single sampling, specify a sample count of 1 and quality
+level of 0.
+
+3. BufferUsage: Specify DXGI_USAGE_RENDER_TARGET_OUTPUT since we are going to be rendering to the back buffer (i.e., use it as
+a render target).
+
+4. BufferCount: The number of buffers to use in the swap chain; specify two for double buffering.
+
+5. OutputWindow: A handle to the window we are rendering into.
+
+6. Windowed: Specify true to run in windowed mode or false for full-screen mode.
+
+7. SwapEffect: Specify DXGI_SWAP_EFFECT_FLIP_DISCARD.
+
+8. Flags: Optional flags. If you specify DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH, then when the application is switching to
+full-screen mode, it will choose a display mode that best matches the current application window dimensions. If this flag is
+not specified, then when the application is switching to full-screen mode, it will use the current desktop display mode.
+
+Resources should be placed in the default heap for optimal performance. Only use upload or read back heaps if you need those
+features.
+
+Computing the time elapsed between frames proceeds as follows. Let ti be the time returned by the performance counter during
+the ith frame and let ti-1 be the time returned by the performance counter during the previous frame. Then the time elapsed
+between the ti-1 reading and the ti reading is t = ti – ti-1. For real-time rendering, we typically require at least 30 frames
+per second for smooth animation (and we usually have much higher rates); thus, t = ti – ti-1 tends to be a relatively small
+number.
+
+Another time measurement that can be useful is the amount of time that has elapsed since the application start, not counting
+paused time; we will call this total time.
+
+We can define a scissor rectangle relative to the back buffer such that pixels outside this rectangle are culled (i.e., not
+rasterized to the back buffer). This can be used for optimizations.

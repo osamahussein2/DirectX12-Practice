@@ -89,7 +89,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -106,7 +106,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="Notes\Notes Chapter 4 DirectX Initialization.txt" />
     <Text Include="Notes\Notes Chapter 3 Transformations.txt" />
     <Text Include="Notes\Notes Chapter 1 Vector Algebra.txt" />
     <Text Include="Notes\Notes Chapter 2 Matrix Algebra.txt" />
@@ -152,6 +153,7 @@
     <ClCompile Include="BoxApp.cpp" />
     <ClCompile Include="Chapter1.cpp" />
     <ClCompile Include="Chapter2.cpp" />
+    <ClCompile Include="Chapter4.cpp" />
     <ClCompile Include="Common\Camera.cpp" />
     <ClCompile Include="Common\d3dApp.cpp" />
     <ClCompile Include="Common\d3dUtil.cpp" />
