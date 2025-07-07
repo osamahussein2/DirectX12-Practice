@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="Notes\Notes Chapter 6 Drawing in Direct3D.txt" />
     <Text Include="Notes\Notes Chapter 5 The Rendering Pipeline.txt" />
     <Text Include="Notes\Notes Chapter 4 DirectX Initialization.txt" />
     <Text Include="Notes\Notes Chapter 3 Transformations.txt" />
@@ -155,6 +156,7 @@
     <ClCompile Include="Chapter1.cpp" />
     <ClCompile Include="Chapter2.cpp" />
     <ClCompile Include="Chapter4.cpp" />
+    <ClCompile Include="Chapter6.cpp" />
     <ClCompile Include="Common\Camera.cpp" />
     <ClCompile Include="Common\d3dApp.cpp" />
     <ClCompile Include="Common\d3dUtil.cpp" />

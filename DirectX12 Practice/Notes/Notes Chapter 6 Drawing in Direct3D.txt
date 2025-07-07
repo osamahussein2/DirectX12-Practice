@@ -1,0 +1,133 @@
+To create a custom vertex format, we first create a structure that holds the vertex data we choose.
+
+Once we have defined a vertex structure, we need to provide Direct3D with a description of our vertex structure so that it
+knows what to do with each component. This description is provided to Direct3D in the form of an input layout description
+which is represented by the D3D12_INPUT_LAYOUT_DESC structure.
+
+In order for the GPU to access an array of vertices, they need to be placed in a GPU resource (ID3D12Resource) called a buffer.
+We call a buffer that stores vertices a vertex buffer. Buffers are simpler resources than textures; they are not 
+multidimensional, and do not have mipmaps, filters, or multisampling support.
+
+For a buffer, the width refers to the number of bytes in the buffer. For example, if the buffer stored 64 floats, then the
+width would be 64 * sizeof(float).
+
+For static geometry (i.e., geometry that does not change on a per-frame basis), we put vertex buffers in the default heap
+(D3D12_HEAP_TYPE_DEFAULT) for optimal performance.
+
+After the vertex buffer has been initialized, only the GPU needs to read from the vertex buffer to draw the geometry, so the
+default heap makes sense.
+
+In addition to creating the actual vertex buffer resource, we need to create an intermediate upload buffer resource with heap
+type D3D12_HEAP_TYPE_UPLOAD. After we create the upload buffer, we copy our vertex data from system memory to the upload
+buffer, and then we copy the vertex data from the upload buffer to the actual vertex buffer.
+
+Because an intermediate upload buffer is required to initialize the data of a default buffer (buffer with heap type
+D3D12_HEAP_TYPE_DEFAULT), we build the following utility function in d3dUtil.h/.cpp to avoid repeating this work every time
+we need a default buffer.
+
+In order to bind a vertex buffer to the pipeline, we need to create a vertex buffer view to the vertex buffer resource. Unlike
+an RTV (render target view), we do not need a descriptor heap for a vertex buffer view. A vertex buffer view is represented
+by the D3D12_VERTEX_BUFFER_VIEW_DESC structure.
+
+After a vertex buffer has been created and we have created a view to it, we can bind it to an input slot of the pipeline to
+feed the vertices to the input assembler stage of the pipeline.
+
+Setting a vertex buffer to an input slot does not draw them; it only makes the vertices ready to be fed into the pipeline. The
+final step to actually draw the vertices is done with the ID3D12GraphicsCommandList::DrawInstanced method.
+
+Similar to vertices, in order for the GPU to access an array of indices, they need to be placed in a buffer GPU resource
+(ID3D12Resource). We call a buffer that stores indices an index buffer. Because our d3dUtil::CreateDefaultBuffer function
+works with generic data via a void*, we can use this same function to create an index buffer (or any default buffer).
+
+In order to bind an index buffer to the pipeline, we need to create an index buffer view to the index buffer resource. As with
+vertex buffer views, we do not need a descriptor heap for an index buffer view. An index buffer view is represented by the
+D3D12_INDEX_BUFFER_VIEW structure.
+
+As with vertex buffers, and other Direct3D resource for that matter, before we can use it, we need to bind it to the pipeline.
+An index buffer is bound to the input assembler stage with the ID3D12CommandList::SetIndexBuffer method.
+
+Finally, when using indices, we must use the ID3D12GraphicsCommandList::DrawIndexedInstanced method instead of DrawInstanced.
+
+After the vertex/index buffer concatenation, the indices are no longer correct, as they store index locations relative to
+their corresponding local vertex buffers, not the global one; thus the indices need to be recomputed to index correctly into
+the global vertex buffer.
+
+Shaders are written in a language called the high level shading language (HLSL), which has similar syntax to C++.
+
+The constructor syntax float4(iPosL, 1.0f) constructs a 4D vector and is equivalent to float4(iPosL.x, iPosL.y, iPosL.z, 1.0f);
+because we know the position of vertices are points and not vectors, we place a 1 in the fourth component (w = 1). The float2
+and float3 types represent 2D and 3D vectors, respectively.
+
+The built-in function mul is used for the vector-matrix multiplication. Incidentally, the mul function is overloaded for matrix
+multiplications of different sizes; for example, you can use it to multiply two 4 * 4 matrices, two 3 * 3 matrices, or a 1 * 3
+vector and a 3 * 3 matrix.
+
+If there is no geometry shader, then the vertex shader must output the vertex position in homogenous clip space with the
+SV_POSITION semantic because this is the space the hardware expects the vertices to be in when leaving the vertex shader (if
+there is no geometry shader). If there is a geometry shader, the job of outputting the homogenous clip space position can be
+deferred to the geometry shader.
+
+When we create an ID3D12PipelineState object, we must specify both the input layout description and the vertex shader. Direct3D
+will then validate that the input layout description and vertex shader are compatible.
+
+The vertex data and input signature do not need to match exactly. What is needed is for the vertex data to provide all the data
+the vertex shader expects. Therefore, it is allowed for the vertex data to provide additional data the vertex shader does not
+use.
+
+A constant buffer is an example of a GPU resource (ID3D12Resource) whose data contents can be referenced in shader programs.
+
+Unlike vertex and index buffers, constant buffers are usually updated once per frame by the CPU. For example, if the camera is
+moving every frame, the constant buffer would need to be updated with the new view matrix every frame. Therefore, we create
+constant buffers in an upload heap rather than a default heap so that we can update the contents from the CPU.
+
+Constant buffers also have the special hardware requirement that their size must be a multiple of the minimum hardware
+allocation size (256 bytes).
+
+When it comes time to draw an object, we just bind a constant buffer view (CBV) to a subregion of the buffer that stores the
+constants for that object.
+
+We also need descriptors to bind constant buffers to the pipeline. Constant buffer descriptors live in a descriptor heap of
+type D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV. Such a heap can store a mixture of constant buffer, shader resource, and
+unordered access descriptors.
+
+D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE flag indicates that these descriptors will be accessed by shader programs.
+
+A constant buffer view is created by filling out a D3D12_CONSTANT_BUFFER_VIEW_DESC instance and calling 
+ID3D12Device::CreateConstantBufferView.
+
+The D3D12_CONSTANT_BUFFER_VIEW_DESC structure describes a subset of the constant buffer resource to bind to the HLSL constant
+buffer structure.
+
+The root signature defines what resources the application will bind to the rendering pipeline before a draw call can be
+executed and where those resources get mapped to shader input registers.
+
+The root signature must be compatible with the shaders it will be used with (i.e., the root signature must provide all the
+resources the shaders expect to be bound to the rendering pipeline before a draw call can be executed); this will be validated
+when the pipeline state object is created.
+
+The root signature only defines what resources the application will bind to the rendering pipeline; it does not actually do
+any resource binding.
+
+Once a root signature has been set with a command list, we use the ID3D12GraphicsCommandList::SetGraphicsRootDescriptorTable to
+bind a descriptor table to the pipeline.
+
+In Direct3D, shader programs must first be compiled to a portable bytecode. The graphics driver will then take this bytecode
+and compile it again into optimal native instructions for the system’s GPU [ATI1].
+
+How to compile a HLSL shader:
+
+/Od Disables optimizations (useful for debugging).
+/Zi Enables debug information.
+/T <string> Shader type and target version.
+/E <string> Shader entry point.
+/Fo <string> Compiled shader object bytecode.
+/Fc <string> Outputs an assembly file listing (useful for debugging, checking instruction counts, seeing what kind of code is
+being generated).
+
+The rasterizer state group, represented by the D3D12_RASTERIZER_DESC structure, is used to configure the rasterization stage
+of the rendering pipeline.
+
+Direct3D is basically a state machine. Things stay in their current state until we change them.
+
+In other words, when a PSO (pipeline state object) is bound to the command list, it does not change until you overwrite it (or
+the command list is reset).
