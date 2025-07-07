@@ -1,0 +1,134 @@
+Given a geometric description of a 3D scene with a positioned and oriented virtual camera, the rendering pipeline refers to
+the entire sequence of steps necessary to generate a 2D image based on what the virtual camera sees.
+
+Figure 5.6 shows a spaceship and its shadow. The shadow serves two key purposes. First, it tells us the origin of the light
+source in the scene. And secondly, it provides us with a rough idea of how high off the ground the spaceship is.
+
+A solid 3D object is represented by a triangle mesh approximation, and consequently, triangles form the basic building blocks
+of the objects we model.
+
+Computer monitors emit a mixture of red, green, and blue light through each pixel. When the light mixture enters the eye and
+strikes an area of the retina, cone receptor cells are stimulated and neural impulses are sent down the optic nerve toward the
+brain. The brain interprets the signal and generates a color. As the light mixture varies, the cells are stimulated
+differently, which in turn generates a different color in the mind.
+
+The alpha component is often used to denote the opacity of a color, which is useful in blending.
+
+Additional bit operations must usually be done when converting a 32-bit color to a 128-bit color and conversely because the
+8-bit color components are usually packed into a 32-bit integer value (e.g., an unsigned int), as it is in XMCOLOR.
+
+The input assembler (IA) stage reads geometric data (vertices and indices) from memory and uses it to assemble geometric
+primitives (e.g., triangles, lines).
+
+Mathematically, the vertices of a triangle are where two edges meet; the vertices of a line are the endpoints; for a single
+point, the point itself is the vertex.
+
+Vertices are bound to the rendering pipeline in a special Direct3D data structure called a vertex buffer. A vertex buffer just
+stores a list of vertices in contiguous memory. However, it does not say how these vertices should be put together to form
+geometric primitives.
+
+The difference between a line list and strip is that the lines in the line list may be disconnected, whereas a line strip
+automatically assumes they are connected; by assuming connectivity, fewer vertices can be used since each interior vertex is
+shared by two lines.
+
+The order in which you specify the vertices of a triangle is important and is called the winding order.
+
+There are two reasons why we do not want to duplicate vertices:
+
+1. Increased memory requirements. (Why store the same vertex data more than once?)
+2. Increased processing by the graphics hardware. (Why process the same vertex data more than once?)
+
+The vertex list consists of all the unique vertices and the index list contains values that index into the vertex list to
+define how the vertices are to be put together to form triangles.
+
+After the unique vertices in the vertex list are processed, the graphics card can use the index list to put the vertices
+together to form the triangles.
+
+Observe that we have moved the "duplication" over to the index list, but this is not bad since:
+
+1. Indices are simply integers and do not take up as much memory as a full vertex structure (and vertex structures can get
+big as we add more components to them).
+2. With good vertex cache ordering, the graphics hardware won’t have to process duplicate vertices (too often).
+
+After the primitives have been assembled, the vertices are fed into the vertex shader stage. The vertex shader can be thought
+of as a function that inputs a vertex and outputs a vertex. Every vertex drawn will be pumped through the vertex shader.
+
+The process of changing coordinates relative to a local coordinate system into the global scene coordinate system is called
+the world transform, and the corresponding matrix is called the world matrix.
+
+In order to form a 2D image of the scene, we must place a virtual camera in the scene. The camera specifies what volume of the
+world the viewer can see and thus what volume of the world we need to generate a 2D image of. Let us attach a local coordinate
+system (called view space, eye space, or camera space) to the camera.
+
+The change of coordinate transformation from world space to view space is called the view transform, and the corresponding
+matrix is called the view matrix.
+
+The world coordinate system and view coordinate system generally differ by position and orientation only, so it makes
+intuitive sense that W = RT (i.e., the world matrix can be decomposed into a rotation followed by a translation).
+
+Thus, given the position of the camera, the target point, and the world "up" direction, we were able to derive the local
+coordinate system of the camera, which can be used to form the view matrix.
+
+So far we have described the position and orientation of the camera in the world, but there is another component to a camera,
+which is the volume of space the camera sees. This volume is described by a frustum.
+
+The projection must be done in such a way that parallel lines converge to a vanishing point, and as the 3D depth of an object
+increases, the size of its projection diminishes; a perspective projection does this.
+
+We call the line from a vertex to the eye point the vertex’s line of projection. Then we define the perspective projection
+transformation as the transformation that transforms a 3D vertex v to the point v' where its line of projection intersects the
+2D projection plane; we say that v' is the projection of v. The projection of a 3D object refers to the projection of all the
+vertices that make up the object.
+
+If the aspect ratio of the projection window and the back buffer were not the same, then a non-uniform scaling would be
+necessary to map the projection window to the back buffer, which would cause distortion (e.g., a circle on the projection
+window might get stretched into an ellipse when mapped to the back buffer).
+
+After multiplying by the projection matrix, but before the perspective divide, geometry is said to be in homogeneous clip
+space or projection space. After the perspective divide, the geometry is said to be in normalized device coordinates (NDC).
+
+Tessellation refers to subdividing the triangles of a mesh to add new triangles. These new triangles can then be offset into
+new positions to create finer mesh detail.
+
+The geometry shader inputs entire primitives. For example, if we were drawing triangle lists, then the input to the geometry
+shader would be the three vertices defining the triangle. (Note that the three vertices will have already passed through the
+vertex shader.) The main advantage of the geometry shader is that it can create or destroy geometry.
+
+For example, the input primitive can be expanded into one or more other primitives, or the geometry shader can choose not to
+output a primitive based on some condition. This is in contrast to a vertex shader, which cannot create vertices: it inputs
+one vertex and outputs one vertex. A common example of the geometry shader is to expand a point into a quad or to expand a
+line into a quad.
+
+Geometry completely outside the viewing frustum needs to be discarded, and geometry that intersects the boundary of the
+frustum must be clipped, so that only the interior part remains.
+
+We can think of the frustum as being the region bounded by six planes: the top, bottom, left, right, near, and far planes. To
+clip a polygon against the frustum, we clip it against each frustum plane one-by-one. When clipping a polygon against a plane,
+the part in the positive half-space of the plane is kept, and the part in the negative half space is discarded.
+
+The main job of the rasterization stage is to compute pixel colors from the projected 3D triangles.
+
+Once vertices are in NDC space, the 2D x- and y- coordinates forming the 2D image are transformed to a rectangle on the back
+buffer called the viewport. After this transform, the x- and y-coordinates are in units of pixels. Usually the viewport
+transformation does not modify the z-coordinate, as it is used for depth buffering.
+
+Backface culling refers to the process of discarding back-facing triangles from the pipeline. This can potentially reduce the
+amount of triangles that need to be processed by half.
+
+Pixel shaders are programs we write that are executed on the GPU. A pixel shader is executed for each pixel fragment and uses
+the interpolated vertex attributes as input to compute a color.
+
+After pixel fragments have been generated by the pixel shader, they move onto the output merger (OM) stage of the rendering
+pipeline. In this stage, some pixel fragments may be rejected (e.g., from the depth or stencil buffer tests). Pixel fragments
+that are not rejected are written to the back buffer. Blending is also done in this stage, where a pixel may be blended with
+the pixel currently on the back buffer instead of overriding it completely.
+
+The rendering pipeline can be broken down into the following major stages:
+1. The input assembly (IA) stage
+2. The vertex shader (VS) stage
+3. The tessellation stages
+4. The geometry shader (GS) stage
+5. The clipping stage
+6. The rasterization stage (RS)
+7. The pixel shader (PS) stage
+8. The output merger (OM) stage.

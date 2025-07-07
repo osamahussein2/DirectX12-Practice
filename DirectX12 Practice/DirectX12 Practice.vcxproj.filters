@@ -65,6 +65,9 @@
     <Text Include="Notes\Notes Chapter 4 DirectX Initialization.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="Notes\Notes Chapter 5 The Rendering Pipeline.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common\Camera.h">
