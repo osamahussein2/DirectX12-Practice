@@ -1,0 +1,114 @@
+The CPU builds and submits command lists (in addition to other CPU work) and the GPU processes commands in the command queue.
+The goal is to keep both CPU and GPU busy to take full advantage of the hardware resources available on the system.
+
+D3DApp::FlushCommandQueue at the end of every frame to ensure the GPU has finished executing all the commands for the frame.
+This solution works but is inefficient for the following reasons:
+
+1. At the beginning of a frame, the GPU will not have any commands to process since we waited to empty the command queue. It
+will have to wait until the CPU builds and submits some commands for execution.
+
+2. At the end of a frame, the CPU is waiting for the GPU to finish processing commands.
+
+So every frame, the CPU and GPU are idling at some point. One solution to this problem is to create a circular array of the
+resources the CPU needs to modify each frame. We call such resources frame resources, and we usually use a circular array of
+three frame resource elements.
+
+The idea is that for frame n, the CPU will cycle through the frame resource array to get the next available (i.e., not in use
+by GPU) frame resource. The CPU will then do any resource updates, and build and submit command lists for frame n while the
+GPU works on previous frames.
+
+The CPU will then continue on to frame n+1 and repeat. If the frame resource array has three elements, this lets the CPU get
+up to two frames ahead of the GPU, ensuring that the GPU is kept busy.
+
+If one processor is processing frames much faster than the other, one processor will eventually have to wait for the other to
+catch up, as we cannot let one get too far ahead of the other. If the GPU is processing commands faster than the CPU can submit
+work, then the GPU will idle.
+
+In general, if we are trying to push the graphical limit, we want to avoid this situation, as we are not taking full advantage
+of the GPU. On the other hand, if the CPU is always processing frames faster than the GPU, then the CPU will have to wait at
+some point. This is the desired situation, as the GPU is being fully utilized; the extra CPU cycles can always be used for
+other parts of the game such as AI, physics, and game play logic.
+
+As we begin to draw more objects in our scenes, it is helpful to create a lightweight structure that stores the data needed to
+draw an object; this data will vary from app to app as we add new features which will require different drawing data. We call
+the set of data needed to submit a full draw call the rendering pipeline a render item.
+
+GeometryGenerator is a utility class for generating simple geometric shapes like grids, sphere, cylinders, and boxes. This
+class generates the data in system memory, and we must then copy the data we want to our vertex and index buffers.
+
+Even though we draw multiple spheres and cylinders in this demo, we only need one copy of the sphere and cylinder geometry. We
+simply redraw the same sphere and cylinder mesh multiple times, but with different world matrices; this is an example of
+instancing geometry, which saves memory.
+
+We pack all the mesh vertices and indices into one vertex and index buffer. This is done by concatenating the vertex and index
+arrays. This means that when we draw an object, we are only drawing a subset of the vertex and index buffers.
+
+We need to be able to offset to other descriptors in the heap. To do this, we need to know the size to increment in the heap to
+get to the next descriptor. This is hardware specific, so we have to query this information from the device, and it depends on
+the heap type.
+
+A root signature defines what resources need to be bound to the pipeline before issuing a draw call and how those resources get
+mapped to shader input registers. What resources need to be bound depends on what resources the current shader programs expect.
+When the PSO is created, the root signature and shader programs combination will be validated.
+
+A root parameter can actually be one of three types:
+
+1. Descriptor Table: Expects a descriptors table referencing a contiguous range in a heap that identifies the resource to be
+bound.
+
+2. Root descriptor (inline descriptor): Expects a descriptor to be set directly that identifies the resource to be bound; the
+descriptor does not need to be in a heap. Only CBVs to constant buffers, and SRV/UAVs to buffers can be bound as a root
+descriptor. In particular, this means SRVs to textures cannot be bound as a root descriptor.
+
+3. Root constant: Expects a list of 32-bit constant values to be bound directly.
+
+For performance, there is a limit of 64 DWORDs that can be put in a root signature. The three types of root parameters have the
+following costs:
+
+1. Descriptor Table: 1 DWORD
+2. Root Descriptor: 2 DWORDs
+3. Root Constant: 1 DWORD per 32-bit constant
+
+Root constants are very convenient but their cost adds up quickly. For example, if the only constant data we needed was a
+world-view-projection matrix, we could use sixteen root constants to store it, which would make us not need to bother with a
+constant buffer and CBV heap. However, that eats up a quarter of our root signature budget. Using a root descriptor would only
+be two DWORDs, and a descriptor table is only one DWORD.
+
+In code a root parameter is described by filling out a CD3DX12_ROOT_PARAMETER structure.
+
+A descriptor table root parameter is further defined by filling out the DescriptorTable member of D3D12_ROOT_PARAMETER.
+
+We can have Direct3D compute the OffsetInDescriptorsFromTableStart value for us by specifying
+D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; this instructs Direct3D to use the previous range descriptor counts in the table to
+compute the offset.
+
+A root descriptor root parameter is further defined by filling out the Descriptor member of D3D12_ROOT_PARAMETER.
+
+A descriptor table root parameter is further defined by filling out the Constants member of D3D12_ROOT_PARAMETER.
+
+Each draw call will be executed with the currently set state of the root arguments at the time of the draw call. This works
+because the hardware automatically saves a snapshot of the current state of the root arguments for each draw call. In other
+words, the root arguments are automatically versioned for each draw call.
+
+Note that a root signature can provide more fields than a shader uses. For example, if the root signature specifies a root
+CBV in root parameter 2, but the shader does not use that constant buffer, then this combination is valid as long as the root
+signature does specify all the resource the shader does use.
+
+The Direct3D 12 documentation also advises to avoid switching the root signature when possible, so it is a good idea to share
+the same root signature across many PSOs you create.
+
+A dynamic vertex buffer is where we change the vertex data frequently, say per-frame. For example, suppose we are doing a wave
+simulation, and we solve the wave equation for the solution function f(x, z, t). This function represents the wave height at
+each point in the xz-plane at time t.
+
+We need a dynamic vertex buffer in order to update the heights of the triangle grid mesh vertices as time passes. Another
+situation that leads to dynamic vertex buffers is particle systems with complex physics and collision detection. Each frame we
+will do the physics and collision detection on the CPU to find the new position of the particles. Because the particle
+positions are changing each frame, we need a dynamic vertex buffer in order to update the particle positions for drawing each
+frame.
+
+We save a reference to the wave render item (mWavesRitem) so that we can set its vertex buffer on the fly. We need to do this
+because its vertex buffer is a dynamic buffer and changes every frame.
+
+There is some overhead when using dynamic buffers, as the new data must be transferred from CPU memory back up to GPU memory.
+Therefore, static buffers should be preferred to dynamic buffers, provided static buffers will work.

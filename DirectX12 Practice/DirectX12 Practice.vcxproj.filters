@@ -13,30 +13,24 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\Chapter 7 header files">
+      <UniqueIdentifier>{ee90d822-64cf-480a-8dc0-8bccbb3f88e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader Files">
+      <UniqueIdentifier>{af75d02a-1010-4597-a01a-5b20ed151cee}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\DirectX library headers">
+      <UniqueIdentifier>{0fe37025-93ef-4c0c-bb25-4ff6381653d2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\DirectX library source files">
+      <UniqueIdentifier>{e24e2e9c-0694-4552-a3c6-44e865d6ad71}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Chapter 7 source files">
+      <UniqueIdentifier>{84506e54-8198-46d0-ac1e-e0ea5e2c7be1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoxApp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\Camera.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\d3dApp.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\d3dUtil.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\DDSTextureLoader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\GameTimer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\GeometryGenerator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Common\MathHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Chapter1.cpp">
@@ -50,6 +44,39 @@
     </ClCompile>
     <ClCompile Include="Chapter6.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FrameResource.cpp">
+      <Filter>Source Files\Chapter 7 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Waves.cpp">
+      <Filter>Source Files\Chapter 7 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="LandAndWaves-Chapter7.cpp">
+      <Filter>Source Files\Chapter 7 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Shapes-Chapter7.cpp">
+      <Filter>Source Files\Chapter 7 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\d3dApp.cpp">
+      <Filter>Source Files\DirectX library source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\GameTimer.cpp">
+      <Filter>Source Files\DirectX library source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\DDSTextureLoader.cpp">
+      <Filter>Source Files\DirectX library source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\d3dUtil.cpp">
+      <Filter>Source Files\DirectX library source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\GeometryGenerator.cpp">
+      <Filter>Source Files\DirectX library source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\MathHelper.cpp">
+      <Filter>Source Files\DirectX library source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\Camera.cpp">
+      <Filter>Source Files\DirectX library source files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -74,34 +101,54 @@
     <Text Include="Notes\Notes Chapter 6 Drawing in Direct3D.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="Notes\Notes Chapter 7 Drawing in Direct3D Part II.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="FrameResource.h">
+      <Filter>Header Files\Chapter 7 header files</Filter>
+    </ClInclude>
+    <ClInclude Include="Waves.h">
+      <Filter>Header Files\Chapter 7 header files</Filter>
+    </ClInclude>
     <ClInclude Include="Common\Camera.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\DirectX library headers</Filter>
     </ClInclude>
     <ClInclude Include="Common\d3dApp.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\DirectX library headers</Filter>
     </ClInclude>
     <ClInclude Include="Common\d3dUtil.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\DirectX library headers</Filter>
     </ClInclude>
     <ClInclude Include="Common\d3dx12.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\DirectX library headers</Filter>
     </ClInclude>
     <ClInclude Include="Common\DDSTextureLoader.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\DirectX library headers</Filter>
     </ClInclude>
     <ClInclude Include="Common\GameTimer.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\DirectX library headers</Filter>
     </ClInclude>
     <ClInclude Include="Common\GeometryGenerator.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\DirectX library headers</Filter>
     </ClInclude>
     <ClInclude Include="Common\MathHelper.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\DirectX library headers</Filter>
     </ClInclude>
     <ClInclude Include="Common\UploadBuffer.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\DirectX library headers</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\boxColor.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\LandAndWavesColor.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\shapeColor.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
