@@ -1,0 +1,177 @@
+When using lighting, we no longer specify vertex colors directly; rather, we specify materials and lights, and then apply a
+lighting equation, which computes the vertex colors for us based on light/material interaction. This leads to a much more
+realistic coloring of the object.
+
+Materials can be thought of as the properties that determine how light interacts with a surface of an object. Examples of such
+properties are the color of light the surface reflects and absorbs, the index of refraction of the material under the surface,
+how smooth the surface is, and how transparent the surface is. By specifying material properties we can model different kinds
+of real-world surfaces like wood, stone, glass, metals, and water.
+
+When light travels outwards from a source and collides with an object, some of that light may be absorbed and some may be
+reflected (for transparent objects, such as glass, some of the light passes through the medium).
+
+The reflected light now travels along its new path and may strike other objects where some light is again absorbed and
+reflected. A light ray may strike many objects before it is fully absorbed.
+
+With a local illumation model, each object is lit independently of another object, and only the light directly emitted from
+light sources is taken into account in the lighting process (i.e., light that has bounced off other scene objects to strikes
+the object currently being lit is ignored).
+
+On the other hand, global illumination models light objects by taking into consideration not only the light directly emitted
+from light sources, but also the indirect light that has bounced off other objects in the scene. These are called global
+illumination models because they take everything in the global scene into consideration when lighting an object. Global
+illumination models are generally prohibitively expensive for real-time games.
+
+A face normal is a unit vector that describes the direction a polygon is facing (i.e., it is orthogonal to all points on the
+polygon).
+
+A surface normal is a unit vector that is orthogonal to the tangent plane of a point on a surface.
+
+For lighting calculations, we need the surface normal at each point on the surface of a triangle mesh so that we can determine
+the angle at which light strikes the point on the mesh surface. To obtain surface normals, we specify the surface normals only
+at the vertex points (so-called vertex normals).
+
+Then, in order to obtain a surface normal approximation at each point on the surface of a triangle mesh, these vertex normals
+will be interpolated across the triangle during rasterization.
+
+Interpolating the normal and doing lighting calculations per pixel is called pixel lighting or phong lighting. A less
+expensive, but less accurate, method is doing the lighting calculations per vertex.
+
+To find the face normal of a triangle p0, p1, p2 we first compute two vectors that lie on the triangle’s edges: u = p1 – p0 & 
+v = p2 – p0. Then the face normal is: n = u * v / ||u * v||.
+
+u*n = 0 - Tangent vector orthogonal to normal vector
+un^T = 0 - Rewriting the dot product as a matrix multiplication
+u(AA^-1)n^T = 0 - Inserting the identity matrix I = AA^-1
+(uA)(A^-1 n^T) = 0 - Associative property of matrix multiplication
+(uA)(A^-1 n^T)^T)^T = 0 - Transpose property (A^T)^T = A
+(uA)(n(A^-1)^T)^T = 0 - Transpose property (AB^T)^T = B^T*A^T
+uA*n(A^-1)^T = 0 - Rewriting the matrix multiplication as a dot product
+uA*nB = 0 - Transformed tangent vector orthogonal to transformed normal vector
+
+Thus B = (A^-1)^T (the inverse transpose of A) does the job in transforming normal vectors so that they are perpendicular to
+its associated transformed tangent vector uA.
+
+Note that if the matrix is orthogonal (A^T = A^-1), then B = (A^-1)^T = (A^T)^T = A; that is, we do not need to compute the
+inverse transpose, since A does the job in this case. In summary, when transforming a normal vector by a nonuniform or shear
+transformation, use the inverse-transpose.
+
+Light equation vectors: E is the eye position, and we are considering the point p the eye sees along the line of site defined
+by the unit vector v. At the point p the surface has normal n, and the point is hit by a ray of light traveling with incident
+direction I. The light vector L is the unit vector that aims in the opposite direction of the light ray striking the surface
+point.
+
+The reflection vector r is the reflection of the incident light vector about the surface normal n.
+
+The view vector (or to-eye vector) v = normalize(E - p) is the unit vector from the surface point p to the eye point E that
+defines the line of site from the eye to the point on the surface being seen. Sometimes we need to use the vector -v, which is
+the unit vector from the eye to the point on the surface we are evaluating the lighting of.
+
+The reflection vector is given by: r = I – 2(n*I)n
+
+Each photon carries some (light) energy. The amount of (light) energy emitted per second is called radiant flux. The density of
+radiant flux per area (called irradiance) is important because that will determine how much light an area on a surface
+receives (and thus how bright it will appear to the eye).
+
+We can think of irradiance as the amount of light striking an area on a surface, or the amount of light passing through an
+imaginary area in space.
+
+Light that strikes a surface head-on (i.e., the light vector L equals the normal vector n) is more intense than light that
+glances a surface at an angle.
+
+When light strikes a point on the surface, some of the light enters the interior of the object and interacts with the matter
+near the surface. The light will bounce around in the interior, where some of it will be absorbed and the remaining part
+scattered out of the surface in every direction; this is called a diffuse reflection.
+
+We break the calculation of diffuse lighting into two parts. For the first part, we specify a light color and a diffuse albedo
+color. The diffuse albedo specifies the amount of incoming light that the surface reflects due to diffuse reflectance (by
+energy conservation, the amount not reflected is absorbed by the material).
+
+Let BL represent the quantity of incoming light, md be the diffuse albedo color, L be the light vector, and n be the surface
+normal. Then the amount of diffuse light reflected off a point is given by: cd = max (L*n, 0) * BL * md
+
+To sort of hack this indirect light, we introduce an ambient term to the lighting equation: ca = AL * md
+
+The color AL specifies the total amount of indirect (ambient) light a surface receives, which may be different than the light
+emitted from the source due to the absorption that occurred when the light bounced off other surfaces.
+
+The diffuse albedo md specifies the amount of incoming light that the surface reflects due to diffuse reflectance.
+
+All ambient light does is uniformly brighten up the object a bit—there is no real physics calculation at all. The idea is that
+the indirect light has scattered and bounced around the scene so many times that it strikes the object equally in every
+direction.
+
+A second kind of reflection happens due to the Fresnel effect, which is a physical phenomenon. When light reaches the interface
+between two media with different indices of refraction some of the light is reflected and the remaining light is refracted.
+
+The index of refraction is a physical property of a medium that is the ratio of the speed of light in a vacuum to the speed of
+light in the given medium. We refer to this light reflection process as specular reflection and the reflected light as
+specular light.
+
+For opaque objects, the refracted light enters the medium and undergoes diffuse reflectance.
+
+Reflective objects in the real world tend not to be perfect mirrors. Even if an object’s surface appears flat, at the
+microscopic level we can think of it as having roughness.
+
+As the roughness increases, the direction of the micro-normals diverge from the macronormal, causing the reflected light to
+spread out into a specular lobe.
+
+The vector h is called the halfway vector as it lies halfway between L (light vector) and v (view vector).
+
+Bringing everything together, the total light reflected off a surface is a sum of ambient light reflectance, diffuse light
+reflectance and specular light reflectance:
+
+1. Ambient Light ca: Models the amount of light reflected off the surface due to indirect light.
+
+2. Diffuse Light cd: Models light that enters the interior of a medium, scatters around under the surface where some of the
+light is absorbed and the remaining light scatters back out of the surface. Because it is difficult to model this subsurface
+scattering, we assume the re-emitted light scatters out equally in all directions above the surface about the point the light
+entered.
+
+3. Specular Light cs: Models the light that is reflected off the surface due to the Fresnel effect and surface roughness.
+
+Modeling real-world materials will require a combination of setting realistic values for the DiffuseAlbedo and FresnelR0, and
+some artistic tweaking. For example, metal conductors absorb refracted light that enters the interior of the metal, which means
+metals will not have diffuse reflection (i.e., the DiffuseAlbedo would be zero).
+
+In our material structure, roughness is specified in a normalized floating-point value in the [0, 1] range. A roughness of 0
+would indicate a perfectly smooth surface, and a roughness of 1 would indicate the roughest surface physically possible.
+
+The normalized range makes it easier to author roughness and compare the roughness between different materials. For example, a
+material with a roughness of 0.6 is twice as rough as a material with roughness 0.3.
+
+A parallel light (or directional light) approximates a light source that is very far away. Consequently, we can approximate all
+incoming light rays as parallel to each other. Moreover, because the light source is very far away, we can ignore the effects
+of distance and just specify the light intensity where the light strikes the scene.
+
+A parallel light source is defined by a vector, which specifi es the direction the light rays travel. Because the light rays
+are parallel, they all use the same direction vector. The light vector, aims in the opposite direction the light rays travel.
+A common example of a light source that can accurately be modeled as a directional light is the sun.
+
+A good physical example of a point light is a lightbulb; it radiates spherically in all directions.
+
+Point lights radiate in every direction; in particular, for an arbitrary point P there exists a light ray originating from the
+point source Q towards P.
+
+As usual, we define the light vector to go in the opposite direction; that is, the direction from the point P to the point
+light source Q: L = Q - P / || Q - P ||
+
+Physically, light intensity weakens as a function of distance based on the inverse squared law. That is to say, the light
+intensity at a point a distance d (light attenuation) away from the light source is given by: I(d) = I0 / d^2 where I0 is the
+light intensity at a distance d = 1 from the light source. This works well if you set up physically based light values and use
+HDR (high dynamic range) lighting and tonemapping.
+
+The saturate function clamps the argument to the range [0, 1]. 
+
+A good physical example of a spotlight is a flashlight. Essentially, a spotlight has a position Q, is aimed in a direction d,
+and radiates light through a cone.
+
+If the C++ and HLSL structure layouts do not match, then we will get rendering bugs when we upload data from the CPU to GPU
+constant buffers using memcpy.
+
+The following intrinsic HLSL functions were used: dot, pow, and max, which are, respectively, the vector dot product function,
+power function, and maximum function.
+
+On the PC, HLSL functions are always inlined; therefore, there is no performance overhead for functions or parameter passing.
+
+With lighting, we no longer specify per-vertex colors but instead define scene lights and per-vertex materials.

@@ -93,8 +93,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <FxCompile>
-      <ShaderType>Vertex</ShaderType>
       <EntryPointName>VS</EntryPointName>
+      <ShaderType>Vertex</ShaderType>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -116,8 +116,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <FxCompile>
-      <ShaderType>Vertex</ShaderType>
       <EntryPointName>VS</EntryPointName>
+      <ShaderType>Vertex</ShaderType>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -151,6 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="Notes Chapter 8 Lighting.txt" />
     <Text Include="Notes\Notes Chapter 7 Drawing in Direct3D Part II.txt" />
     <Text Include="Notes\Notes Chapter 6 Drawing in Direct3D.txt" />
     <Text Include="Notes\Notes Chapter 5 The Rendering Pipeline.txt" />
@@ -175,6 +176,7 @@
     <ClCompile Include="Common\GeometryGenerator.cpp" />
     <ClCompile Include="Common\MathHelper.cpp" />
     <ClCompile Include="FrameResource.cpp" />
+    <ClCompile Include="LitWaves-Chapter8.cpp" />
     <ClCompile Include="Shapes-Chapter7.cpp" />
     <ClCompile Include="Waves.cpp" />
   </ItemGroup>
@@ -193,7 +195,15 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\boxColor.hlsl" />
+    <FxCompile Include="Shaders\Default.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+    </FxCompile>
     <FxCompile Include="Shaders\LandAndWavesColor.hlsl" />
+    <FxCompile Include="Shaders\LightingUtils.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </FxCompile>
     <FxCompile Include="Shaders\shapeColor.hlsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
