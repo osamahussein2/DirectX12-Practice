@@ -7,6 +7,7 @@
 struct ObjectConstants
 {
     DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
+    DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4(); // Chapter 9 texturing demo
 };
 
 struct PassConstants
@@ -40,7 +41,8 @@ struct Vertex
 {
     DirectX::XMFLOAT3 Pos;
     //DirectX::XMFLOAT4 Color; // Chapter 7 demos
-    DirectX::XMFLOAT3 Normal;
+    DirectX::XMFLOAT3 Normal; // Chapter 8 lighting demo
+    DirectX::XMFLOAT2 TexC; // Chapter 9 texturing demo
 };
 
 // Stores the resources needed for the CPU to build the command lists
@@ -49,8 +51,9 @@ struct FrameResource
 {
 public:
 
-    FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount);
-    FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount);
+    //FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount);
+    //FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount);
+    FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount);
     FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount, UINT waveVertCount);
     FrameResource(const FrameResource& rhs) = delete;
     FrameResource& operator=(const FrameResource& rhs) = delete;

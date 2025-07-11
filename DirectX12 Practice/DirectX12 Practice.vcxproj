@@ -152,6 +152,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <Text Include="Notes Chapter 8 Lighting.txt" />
+    <Text Include="Notes Chapter 9 Texturing.txt" />
     <Text Include="Notes\Notes Chapter 7 Drawing in Direct3D Part II.txt" />
     <Text Include="Notes\Notes Chapter 6 Drawing in Direct3D.txt" />
     <Text Include="Notes\Notes Chapter 5 The Rendering Pipeline.txt" />
@@ -167,6 +168,7 @@
     <ClCompile Include="Chapter2.cpp" />
     <ClCompile Include="Chapter4.cpp" />
     <ClCompile Include="Chapter6.cpp" />
+    <ClCompile Include="Crate-Chapter9.cpp" />
     <ClCompile Include="LandAndWaves-Chapter7.cpp" />
     <ClCompile Include="Common\Camera.cpp" />
     <ClCompile Include="Common\d3dApp.cpp" />
@@ -178,6 +180,8 @@
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="LitWaves-Chapter8.cpp" />
     <ClCompile Include="Shapes-Chapter7.cpp" />
+    <ClCompile Include="TexColumns-Chapter9.cpp" />
+    <ClCompile Include="TexWaves-Chapter9.cpp" />
     <ClCompile Include="Waves.cpp" />
   </ItemGroup>
   <ItemGroup>
