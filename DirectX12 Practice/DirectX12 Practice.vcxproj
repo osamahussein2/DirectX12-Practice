@@ -151,8 +151,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="Notes Chapter 8 Lighting.txt" />
-    <Text Include="Notes Chapter 9 Texturing.txt" />
+    <Text Include="Notes\Notes Chapter 10 Blending.txt" />
+    <Text Include="Notes\Notes Chapter 8 Lighting.txt" />
+    <Text Include="Notes\Notes Chapter 9 Texturing.txt" />
     <Text Include="Notes\Notes Chapter 7 Drawing in Direct3D Part II.txt" />
     <Text Include="Notes\Notes Chapter 6 Drawing in Direct3D.txt" />
     <Text Include="Notes\Notes Chapter 5 The Rendering Pipeline.txt" />
@@ -163,6 +164,7 @@
     <Text Include="Notes\Notes Introduction to DirectX12.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Blending-Chapter10.cpp" />
     <ClCompile Include="BoxApp.cpp" />
     <ClCompile Include="Chapter1.cpp" />
     <ClCompile Include="Chapter2.cpp" />

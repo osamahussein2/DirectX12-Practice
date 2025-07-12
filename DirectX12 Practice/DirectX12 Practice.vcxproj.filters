@@ -37,6 +37,9 @@
     <Filter Include="Source Files\Chapter 9 source files">
       <UniqueIdentifier>{eec77c03-89d0-42da-be12-c020f37a4e5c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Chapter 10 source files">
+      <UniqueIdentifier>{9be94cd1-bdc6-4cb3-a554-21ae205ef2c3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoxApp.cpp">
@@ -99,6 +102,9 @@
     <ClCompile Include="TexWaves-Chapter9.cpp">
       <Filter>Source Files\Chapter 9 source files</Filter>
     </ClCompile>
+    <ClCompile Include="Blending-Chapter10.cpp">
+      <Filter>Source Files\Chapter 10 source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\Notes Introduction to DirectX12.txt">
@@ -125,10 +131,15 @@
     <Text Include="Notes\Notes Chapter 7 Drawing in Direct3D Part II.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="Notes Chapter 8 Lighting.txt">
+    <Text Include="Notes\Notes Chapter 8 Lighting.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="Notes Chapter 9 Texturing.txt" />
+    <Text Include="Notes\Notes Chapter 9 Texturing.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Notes\Notes Chapter 10 Blending.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FrameResource.h">
