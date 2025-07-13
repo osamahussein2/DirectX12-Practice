@@ -151,6 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="Notes\Notes Chapter 11 Stenciling.txt" />
     <Text Include="Notes\Notes Chapter 10 Blending.txt" />
     <Text Include="Notes\Notes Chapter 8 Lighting.txt" />
     <Text Include="Notes\Notes Chapter 9 Texturing.txt" />
@@ -182,6 +183,7 @@
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="LitWaves-Chapter8.cpp" />
     <ClCompile Include="Shapes-Chapter7.cpp" />
+    <ClCompile Include="Stencil-Chapter11.cpp" />
     <ClCompile Include="TexColumns-Chapter9.cpp" />
     <ClCompile Include="TexWaves-Chapter9.cpp" />
     <ClCompile Include="Waves.cpp" />
