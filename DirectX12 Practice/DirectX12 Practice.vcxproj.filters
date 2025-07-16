@@ -43,6 +43,9 @@
     <Filter Include="Source Files\Chapter 11 source files">
       <UniqueIdentifier>{777008d5-c25c-4272-9eb2-7ce0bbd9b629}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Chapter 12 source files">
+      <UniqueIdentifier>{7ae10aa7-bb85-4ff9-bbaa-c52907ba2080}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoxApp.cpp">
@@ -111,6 +114,9 @@
     <ClCompile Include="Stencil-Chapter11.cpp">
       <Filter>Source Files\Chapter 11 source files</Filter>
     </ClCompile>
+    <ClCompile Include="TreeBillboards-Chapter12.cpp">
+      <Filter>Source Files\Chapter 12 source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\Notes Introduction to DirectX12.txt">
@@ -147,6 +153,9 @@
       <Filter>Resource Files</Filter>
     </Text>
     <Text Include="Notes\Notes Chapter 11 Stenciling.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Notes\Notes Chapter 12 The Geometry Shader.txt">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>
@@ -186,9 +195,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\Default.hlsl">
-      <Filter>Shader Files</Filter>
-    </FxCompile>
     <FxCompile Include="Shaders\LandAndWavesColor.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
@@ -198,7 +204,13 @@
     <FxCompile Include="Shaders\shapeColor.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\Default.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\LightingUtils.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\TreeSprite.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>

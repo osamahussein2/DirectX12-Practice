@@ -151,6 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="Notes\Notes Chapter 12 The Geometry Shader.txt" />
     <Text Include="Notes\Notes Chapter 11 Stenciling.txt" />
     <Text Include="Notes\Notes Chapter 10 Blending.txt" />
     <Text Include="Notes\Notes Chapter 8 Lighting.txt" />
@@ -186,6 +187,7 @@
     <ClCompile Include="Stencil-Chapter11.cpp" />
     <ClCompile Include="TexColumns-Chapter9.cpp" />
     <ClCompile Include="TexWaves-Chapter9.cpp" />
+    <ClCompile Include="TreeBillboards-Chapter12.cpp" />
     <ClCompile Include="Waves.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -203,16 +205,14 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\boxColor.hlsl" />
-    <FxCompile Include="Shaders\Default.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
-    </FxCompile>
+    <FxCompile Include="Shaders\Default.hlsl" />
     <FxCompile Include="Shaders\LandAndWavesColor.hlsl" />
     <FxCompile Include="Shaders\LightingUtils.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="Shaders\shapeColor.hlsl" />
+    <FxCompile Include="Shaders\TreeSprite.hlsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

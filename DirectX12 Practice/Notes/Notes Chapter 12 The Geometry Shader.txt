@@ -1,0 +1,183 @@
+Assuming we are not using the tessellation stages, the geometry shader stage is an optional stage that sits between the vertex
+and pixel shader stages. While the vertex shader inputs vertices, the geometry shader inputs entire primitives. For example, if
+we were drawing triangle lists, then conceptually the geometry shader program would be executed for each triangle T in the list:
+
+for(UINT i = 0; i < numTriangles; ++i) OutputPrimitiveList = GeometryShader( T[i].vertexList );
+
+Notice the three vertices of each triangle are input into the geometry shader, and the geometry shader outputs a list of
+primitives. Unlike vertex shaders which cannot destroy or create vertices, the main advantage of the geometry shader is that it
+can create or destroy geometry; this enables some interesting effects to be implemented on the GPU.
+
+For example, the input primitive can be expanded into one or more other primitives, or the geometry shader can choose not to
+output a primitive based on some condition. Note that the output primitives need not be the same type as the input primitive;
+for instance, a common application of the geometry shader is to expand a point into a quad (two triangles).
+
+The primitives output from the geometry shader are defined by a vertex list. Vertex positions leaving the geometry shader must
+be transformed to homogeneous clip space. After the geometry shader stage, we have a list of vertices defining primitives in
+homogeneous clip space. These vertices are projected (homogeneous divide), and then rasterization occurs as usual.
+
+Programming geometry shaders is a lot like programming vertex or pixel shaders, but there are some differences:
+
+We must first specify the maximum number of vertices the geometry shader will output for a single invocation (the geometry
+shader is invoked per primitive). This is done by setting the max vertex count before the shader definition using the following
+attribute syntax: [maxvertexcount(N)] where N is the maximum number of vertices the geometry shader will output for a single
+invocation. The number of vertices a geometry shader can output per invocation is variable, but it cannot exceed the defined
+maximum.
+
+For performance purposes, maxvertexcount should be as small as possible; [NVIDIA08] states that peak performance of the GS is
+achieved when the GS outputs between 1-20 scalars, and performance drops to 50% if the GS outputs between 27-40 scalars. The
+number of scalars output per invocation is the product of maxvertexcount and the number of scalars in the output vertex type
+structure.
+
+The geometry shader takes two parameters: an input parameter and an output parameter. The input parameter is always an array of
+vertices that define the primitive - one vertex for a point, two for a line, three for a triangle, four for a line with
+adjacency, and six for a triangle with adjacency.
+
+The vertex type of the input vertices is the vertex type returned by the vertex shader (e.g., VertexOut). The input parameter
+must be prefixed by a primitive type, describing the type of primitives being input into the geometry shader. This can be
+anyone of the following:
+
+1. point: The input primitives are points.
+2. line: The input primitives are lines (lists or strips).
+3. triangle: The input primitives triangles (lists or strips).
+4. lineadj: The input primitives are lines with adjacency (lists or strips).
+5. triangleadj: The input primitives are triangles with adjacency (lists or strips).
+
+The input primitive into a geometry shader is always a complete primitive (e.g., two vertices for a line, and three vertices
+for a triangle). Thus the geometry shader does not need to distinguish between lists and strips. For example, if you are
+drawing triangle strips, the geometry shader is still executed for every triangle in the strip, and the three vertices of each
+triangle are passed into the geometry shader as input. This entails additional overhead, as vertices that are shared by
+multiple primitives are processed multiple times in the geometry shader.
+
+The output parameter always has the inout modifier. Additionally, the output parameter is always a stream type. A stream type
+stores a list of vertices which defines the geometry the geometry shader is outputting. A geometry shader adds a vertex to the
+outgoing stream list using the intrinsic Append method: void StreamOutputObject<OutputVertexType>::Append(OutputVertexType v);
+
+A stream type is a template type, where the template argument is used to specify the vertex type of the outgoing vertices
+(e.g., GeoOut). There are three possible stream types:
+
+1. PointStream<OutputVertexType>: A list of vertices defining a point list.
+2. LineStream<OutputVertexType>: A list of vertices defining a line strip.
+3. TriangleStream<OutputVertexType>: A list of vertices defining a triangle strip.
+
+The vertices output by a geometry shader form primitives; the type of output primitive is indicated by the stream type
+(PointStream, LineStream, TriangleStream). For lines and triangles, the output primitive is always a strip. Line and triangle
+lists, however, can be simulated by using the intrinsic RestartStrip method: 
+void StreamOutputObject<OutputVertexType>::RestartStrip();
+
+Subdividing a triangle into four equally sized triangles. Observe that the three new vertices are the midpoints along the edges
+of the original triangle.
+
+Geometry shaders are compiled very similarly to vertex and pixel shaders. Suppose we have a geometry shader called GS in
+TreeSprite.hlsl, then we would compile the shader to bytecode like so:
+
+mShaders["treeSpriteGS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "GS", "gs_5_0");
+
+Like vertex and pixel shaders, a given geometry
+shader is bound to the rendering pipeline as part of a pipeline state object (PSO):
+
+D3D12_GRAPHICS_PIPELINE_STATE_DESC treeSpritePsoDesc = opaquePsoDesc;
+...
+treeSpritePsoDesc.GS =
+{
+	reinterpret_cast<BYTE*>(mShaders["treeSpriteGS"]->GetBufferPointer()),
+	mShaders["treeSpriteGS"]->GetBufferSize()
+};
+
+Given an input primitive, the geometry shader can choose not to output it based on some condition. In this way, geometry is
+"destroyed" by the geometry shader, which can be useful for some algorithms.
+
+If you do not output enough vertices to complete a primitive in a geometry shader, then the partial primitive is discarded.
+
+When trees are far away, a billboarding technique is used for efficiency. That is, instead of rendering the geometry for a
+fully 3D tree, a quad with a picture of a 3D tree is painted on it. From a distance, you cannot tell that a billboard is being
+used. However, the trick is to make sure that the billboard always faces the camera (otherwise the illusion would break).
+
+Assuming the y-axis is up and the xz-plane is the ground plane, the tree billboards will generally be aligned with the y-axis
+and just face the camera in the xz-plane.
+
+So given the center position C = (Cx, Cy, Cz) of a billboard in world space and the position of the camera E = (Ex, Ey, Ez) in
+world space, we have enough information to describe the local coordinate system of the billboard relative to the world space:
+
+w = (Ex - Cx, 0, Ez - Cz) / || (Ex - Cx, 0, Ez - Cz) ||
+v = (0, 1, 0)
+u = v * w
+
+Given the local coordinate system of the billboard relative to the world space, and the world size of the billboard, the
+billboard quad vertices can be obtained as follows:
+
+v[0] = float4(gin[0].CenterW + halfWidth * right - halfHeight * up, 1.0f);
+v[1] = float4(gin[0].CenterW + halfWidth * right + halfHeight * up, 1.0f);
+v[2] = float4(gin[0].CenterW - halfWidth * right - halfHeight * up, 1.0f);
+v[3] = float4(gin[0].CenterW - halfWidth * right + halfHeight * up, 1.0f);
+
+A common CPU implementation of billboards would be to use four vertices per billboard in a dynamic vertex buffer (i.e., upload
+heap). Then every time the camera moved, the vertices would be updated on the CPU and memcpyed to the GPU buffer so that the
+billboards face the camera. This approach must submit four vertices per billboard to the InputAssembly stage, and requires
+updating dynamic vertex buffers, which has overhead. With the geometry shader approach, we can use static vertex buffers since
+the geometry shader does the billboard expansion and makes the billboards face the camera. Moreover, the memory footprint of
+the billboards is quite small, as we only have to submit one vertex per billboard to the InputAssembly stage.
+
+The vertex stores a point which represents the center position of the billboard in world space. It also includes a size member,
+which stores the width/height of the billboard (scaled to world space units); this is so the geometry shader knows how large
+the billboard should be after expansion. By having the size vary per vertex, we can easily allow for billboards of different
+sizes.
+
+In our billboard example, the geometry shader does not use this ID (although a geometry shader could); instead, the geometry
+shader writes the primitive ID to the outgoing vertices, thereby passing it on to the pixel shader stage. The pixel shader uses
+the primitive ID to index into a texture array.
+
+If a geometry shader is not present, the primitive ID parameter can be added to the parameter list of the pixel shader:
+
+float4 PS(VertexOut pin, uint primID : SV_PrimitiveID) : SV_Target
+{
+	// Pixel shader body...
+}
+
+However, if a geometry shader is present, then the primitive ID parameter must occur in the geometry shader signature. Then
+the geometry shader can use the primitive ID or pass it on to the pixel shader stage (or both).
+
+It is also possible to have the input assembler generate a vertex ID. To do this, add an additional parameter of type uint to
+the vertex shader signature with semantic SV_VertexID. The following vertex shader signature shows how this is done:
+
+VertexOut VS(VertexIn vin, uint vertID : SV_VertexID)
+{
+	// vertex shader body...
+}
+
+For a Draw call, the vertices in the draw call will be labeled with IDs from 0, 1, ..., n-1, where n is the number of vertices
+in the draw call. For a DrawIndexed call, the vertex IDs correspond to the vertex index values.
+
+A texture array stores an array of textures. In C++ code, a texture array is represented by the ID3D12Resource interface just
+like all resources are (textures and buffers). When creating an ID3D12Resource object, there is actually a property called
+DepthOrArraySize that can be set to specify the number of texture elements the texture stores (or the depth for a 3D texture).
+
+In a HLSL file, a texture array is represented by the Texture2DArray type: Texture2DArray gTreeMapArray;
+
+One of the advantages with texture arrays is that we were able to draw a collection of primitives, with different textures,
+in one draw call.
+
+Each set and draw call has some overhead associated with it. With texture arrays, we could reduce this to one set and one draw
+call:
+
+SetTextureArray();
+DrawPrimitivesWithTextureArray();
+
+The Direct3D API uses the term array slice to refer to an element in a texture along with its complete mipmap chain. The
+Direct3D API uses the term mip slice to refer to all the mipmaps at a particular level in the texture array. A subresource
+refers to a single mipmap level in a texture array element.
+
+Given the texture array index, and a mipmap level, we can access a subresource in a texture array. However, the subresources
+can also be labeled by a linear index.
+
+The following utility function is used to compute the linear subresource index given the mip level, array index, and the
+number of mipmap levels:
+
+inline UINT D3D12CalcSubresource(UINT MipSlice, UINT ArraySlice, UINT PlaneSlice, UINT MipLevels, UINT ArraySize)
+{
+	return MipSlice + ArraySlice * MipLevels + PlaneSlice * MipLevels * ArraySize;
+}
+
+Alpha-to-coverage instructs the hardware to look at the alpha value returned by the pixel shader when determining subpixel
+coverage. This enables smooth edges for alpha masked cutout textures like foliage and fences. Alpha-tocoverage is controlled by
+the D3D12_BLEND_DESC::AlphaToCoverageEnable field in a PSO(pipeline state object).

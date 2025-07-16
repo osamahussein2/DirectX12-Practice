@@ -56,7 +56,7 @@ cbuffer cbPass : register(b1)
     float gTotalTime;
     float gDeltaTime;
     float4 gAmbientLight;
-    
+
     // Allow application to change fog parameters once per frame.
     // For example, we may only use fog for certain times of day (Chapter 10 blending demo).
     float4 gFogColor;
@@ -107,7 +107,7 @@ VertexOut VS(VertexIn vin)
 
     // Transform to homogeneous clip space.
     vout.PosH = mul(posW, gViewProj);
-    
+	
     // gTexTransform and MatTransform are used in the vertex shader to transform the input texture coordinates
 	// Output vertex attributes for interpolation across triangle.
     float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
@@ -120,22 +120,22 @@ float4 PS(VertexOut pin) : SV_Target
 {
     // Chapter 9 texturing demo
     float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo;
-    
+	
     /* Observe that we only clip if ALPHA_TEST is defined; this is because we might not want to invoke clip for some render
     items, so we need to be able to switch it on/off by having specialized shaders. Moreover, there is a cost to using alpha
     testing, so we should only use it if we need it. */
 #ifdef ALPHA_TEST
-    // Discard pixel if texture alpha < 0.1. We do this test as soon
-    // as possible in the shader so that we can potentially exit the
-    // shader early, thereby skipping the rest of the shader code.
-    clip(diffuseAlbedo.a - 0.1f);
+	// Discard pixel if texture alpha < 0.1. We do this test as soon 
+	// as possible in the shader so that we can potentially exit the
+	// shader early, thereby skipping the rest of the shader code.
+	clip(diffuseAlbedo.a - 0.1f);
 #endif
 
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);
 
     // Vector from point being lit to eye. 
-    float3 toEyeW = normalize(gEyePosW - pin.PosW);
+    float3 toEyeW = gEyePosW - pin.PosW;
     float distToEye = length(toEyeW);
     toEyeW /= distToEye; // normalize
 
@@ -148,11 +148,11 @@ float4 PS(VertexOut pin) : SV_Target
     float4 directLight = ComputeLighting(gLights, mat, pin.PosW, pin.NormalW, toEyeW, shadowFactor);
 
     float4 litColor = ambient + directLight;
-    
-#ifdef FOG
 
-    float fogAmount = saturate((distToEye - gFogStart) / gFogRange);
-    litColor = lerp(litColor, gFogColor, fogAmount);
+#ifdef FOG
+    
+	float fogAmount = saturate((distToEye - gFogStart) / gFogRange);
+	litColor = lerp(litColor, gFogColor, fogAmount);
 #endif
 
     // Common convention to take alpha from diffuse material.
