@@ -8,6 +8,11 @@ struct ObjectConstants
 {
     DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
     DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4(); // Chapter 9 texturing demo
+
+    // Chapter 13 SobelApp demo
+    DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f, 1.0f };
+    float GridSpatialStep = 1.0f;
+    float Pad;
 };
 
 struct PassConstants
@@ -62,7 +67,7 @@ struct Vertex
 struct FrameResource
 {
 public:
-
+    FrameResource(ID3D12Device* device, UINT passCount);
     //FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount);
     //FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount);
     FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount);

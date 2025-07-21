@@ -1,5 +1,5 @@
 ////***************************************************************************************
-//// TreeBillboardsApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
+//// SobelApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
 ////***************************************************************************************
 //
 //#include "d3dApp.h"
@@ -7,7 +7,9 @@
 //#include "UploadBuffer.h"
 //#include "GeometryGenerator.h"
 //#include "FrameResource.h"
-//#include "Waves.h"
+//#include "GpuWaves.h"
+//#include "SobelFilter.h"
+//#include "RenderTarget.h"
 //
 //using Microsoft::WRL::ComPtr;
 //using namespace DirectX;
@@ -30,6 +32,10 @@
 //	XMFLOAT4X4 World = MathHelper::Identity4x4();
 //
 //	XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
+//
+//	// Used for GPU waves render items.
+//	DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f, 1.0f };
+//	float GridSpatialStep = 1.0f;
 //
 //	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
 //	// Because we have an object cbuffer for each FrameResource, we have to apply the
@@ -57,21 +63,22 @@
 //	Opaque = 0,
 //	Transparent,
 //	AlphaTested,
-//	AlphaTestedTreeSprites,
+//	GpuWaves,
 //	Count
 //};
 //
-//class TreeBillboardsApp : public D3DApp
+//class SobelApp : public D3DApp
 //{
 //public:
-//	TreeBillboardsApp(HINSTANCE hInstance);
-//	TreeBillboardsApp(const TreeBillboardsApp& rhs) = delete;
-//	TreeBillboardsApp& operator=(const TreeBillboardsApp& rhs) = delete;
-//	~TreeBillboardsApp();
+//	SobelApp(HINSTANCE hInstance);
+//	SobelApp(const SobelApp& rhs) = delete;
+//	SobelApp& operator=(const SobelApp& rhs) = delete;
+//	~SobelApp();
 //
 //	virtual bool Initialize()override;
 //
 //private:
+//	virtual void CreateRtvAndDsvDescriptorHeaps()override;
 //	virtual void OnResize()override;
 //	virtual void Update(const GameTimer& gt)override;
 //	virtual void Draw(const GameTimer& gt)override;
@@ -86,21 +93,23 @@
 //	void UpdateObjectCBs(const GameTimer& gt);
 //	void UpdateMaterialCBs(const GameTimer& gt);
 //	void UpdateMainPassCB(const GameTimer& gt);
-//	void UpdateWaves(const GameTimer& gt);
+//	void UpdateWavesGPU(const GameTimer& gt);
 //
 //	void LoadTextures();
 //	void BuildRootSignature();
+//	void BuildWavesRootSignature();
+//	void BuildPostProcessRootSignature();
 //	void BuildDescriptorHeaps();
-//	void BuildShadersAndInputLayouts();
+//	void BuildShadersAndInputLayout();
 //	void BuildLandGeometry();
 //	void BuildWavesGeometry();
 //	void BuildBoxGeometry();
-//	void BuildTreeSpritesGeometry();
 //	void BuildPSOs();
 //	void BuildFrameResources();
 //	void BuildMaterials();
 //	void BuildRenderItems();
 //	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
+//	void DrawFullscreenQuad(ID3D12GraphicsCommandList* cmdList);
 //
 //	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 //
@@ -116,6 +125,8 @@
 //	UINT mCbvSrvDescriptorSize = 0;
 //
 //	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+//	ComPtr<ID3D12RootSignature> mWavesRootSignature = nullptr;
+//	ComPtr<ID3D12RootSignature> mPostProcessRootSignature = nullptr;
 //
 //	ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
 //
@@ -125,10 +136,7 @@
 //	std::unordered_map<std::string, ComPtr<ID3DBlob>> mShaders;
 //	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> mPSOs;
 //
-//	std::vector<D3D12_INPUT_ELEMENT_DESC> mStdInputLayout;
-//	std::vector<D3D12_INPUT_ELEMENT_DESC> mTreeSpriteInputLayout;
-//
-//	RenderItem* mWavesRitem = nullptr;
+//	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 //
 //	// List of all the render items.
 //	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
@@ -136,7 +144,11 @@
 //	// Render items divided by PSO.
 //	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
 //
-//	std::unique_ptr<Waves> mWaves;
+//	std::unique_ptr<GpuWaves> mWaves;
+//
+//	std::unique_ptr<RenderTarget> mOffscreenRT = nullptr;
+//
+//	std::unique_ptr<SobelFilter> mSobelFilter = nullptr;
 //
 //	PassConstants mMainPassCB;
 //
@@ -161,7 +173,7 @@
 //
 //	try
 //	{
-//		TreeBillboardsApp theApp(hInstance);
+//		SobelApp theApp(hInstance);
 //		if (!theApp.Initialize())
 //			return 0;
 //
@@ -174,18 +186,18 @@
 //	}
 //}
 //
-//TreeBillboardsApp::TreeBillboardsApp(HINSTANCE hInstance)
+//SobelApp::SobelApp(HINSTANCE hInstance)
 //	: D3DApp(hInstance)
 //{
 //}
 //
-//TreeBillboardsApp::~TreeBillboardsApp()
+//SobelApp::~SobelApp()
 //{
 //	if (md3dDevice != nullptr)
 //		FlushCommandQueue();
 //}
 //
-//bool TreeBillboardsApp::Initialize()
+//bool SobelApp::Initialize()
 //{
 //	if (!D3DApp::Initialize())
 //		return false;
@@ -197,16 +209,30 @@
 //	// so we have to query this information.
 //	mCbvSrvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 //
-//	mWaves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
+//	mWaves = std::make_unique<GpuWaves>(
+//		md3dDevice.Get(),
+//		mCommandList.Get(),
+//		256, 256, 0.25f, 0.03f, 2.0f, 0.2f);
+//
+//	mSobelFilter = std::make_unique<SobelFilter>(
+//		md3dDevice.Get(),
+//		mClientWidth, mClientHeight,
+//		mBackBufferFormat);
+//
+//	mOffscreenRT = std::make_unique<RenderTarget>(
+//		md3dDevice.Get(),
+//		mClientWidth, mClientHeight,
+//		mBackBufferFormat);
 //
 //	LoadTextures();
 //	BuildRootSignature();
+//	BuildWavesRootSignature();
+//	BuildPostProcessRootSignature();
 //	BuildDescriptorHeaps();
-//	BuildShadersAndInputLayouts();
+//	BuildShadersAndInputLayout();
 //	BuildLandGeometry();
 //	BuildWavesGeometry();
 //	BuildBoxGeometry();
-//	BuildTreeSpritesGeometry();
 //	BuildMaterials();
 //	BuildRenderItems();
 //	BuildFrameResources();
@@ -223,16 +249,46 @@
 //	return true;
 //}
 //
-//void TreeBillboardsApp::OnResize()
+//void SobelApp::CreateRtvAndDsvDescriptorHeaps()
+//{
+//	// Add +1 descriptor for offscreen render target.
+//	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
+//	rtvHeapDesc.NumDescriptors = SwapChainBufferCount + 1;
+//	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+//	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+//	rtvHeapDesc.NodeMask = 0;
+//	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
+//		&rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf())));
+//
+//	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
+//	dsvHeapDesc.NumDescriptors = 1;
+//	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+//	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+//	dsvHeapDesc.NodeMask = 0;
+//	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
+//		&dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf())));
+//}
+//
+//void SobelApp::OnResize()
 //{
 //	D3DApp::OnResize();
 //
 //	// The window resized, so update the aspect ratio and recompute the projection matrix.
 //	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
 //	XMStoreFloat4x4(&mProj, P);
+//
+//	if (mSobelFilter != nullptr)
+//	{
+//		mSobelFilter->OnResize(mClientWidth, mClientHeight);
+//	}
+//
+//	if (mOffscreenRT != nullptr)
+//	{
+//		mOffscreenRT->OnResize(mClientWidth, mClientHeight);
+//	}
 //}
 //
-//void TreeBillboardsApp::Update(const GameTimer& gt)
+//void SobelApp::Update(const GameTimer& gt)
 //{
 //	OnKeyboardInput(gt);
 //	UpdateCamera(gt);
@@ -255,10 +311,9 @@
 //	UpdateObjectCBs(gt);
 //	UpdateMaterialCBs(gt);
 //	UpdateMainPassCB(gt);
-//	UpdateWaves(gt);
 //}
 //
-//void TreeBillboardsApp::Draw(const GameTimer& gt)
+//void SobelApp::Draw(const GameTimer& gt)
 //{
 //	auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
 //
@@ -270,38 +325,68 @@
 //	// Reusing the command list reuses memory.
 //	ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque"].Get()));
 //
+//	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvDescriptorHeap.Get() };
+//	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+//
+//	UpdateWavesGPU(gt);
+//
+//	mCommandList->SetPipelineState(mPSOs["opaque"].Get());
+//
 //	mCommandList->RSSetViewports(1, &mScreenViewport);
 //	mCommandList->RSSetScissorRects(1, &mScissorRect);
 //
-//	// Indicate a state transition on the resource usage.
-//	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-//		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+//	// Change offscreen texture to be used as a a render target output.
+//	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOffscreenRT->Resource(),
+//		D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_RENDER_TARGET));
 //
 //	// Clear the back buffer and depth buffer.
-//	mCommandList->ClearRenderTargetView(CurrentBackBufferView(), (float*)&mMainPassCB.FogColor, 0, nullptr);
+//	mCommandList->ClearRenderTargetView(mOffscreenRT->Rtv(), (float*)&mMainPassCB.FogColor, 0, nullptr);
 //	mCommandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 //
 //	// Specify the buffers we are going to render to.
-//	mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
-//
-//	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvDescriptorHeap.Get() };
-//	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+//	mCommandList->OMSetRenderTargets(1, &mOffscreenRT->Rtv(), true, &DepthStencilView());
 //
 //	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 //
 //	auto passCB = mCurrFrameResource->PassCB->Resource();
 //	mCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 //
+//	mCommandList->SetGraphicsRootDescriptorTable(4, mWaves->DisplacementMap());
+//
 //	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
 //
 //	mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
 //	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::AlphaTested]);
 //
-//	mCommandList->SetPipelineState(mPSOs["treeSprites"].Get());
-//	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::AlphaTestedTreeSprites]);
-//
 //	mCommandList->SetPipelineState(mPSOs["transparent"].Get());
 //	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Transparent]);
+//
+//	mCommandList->SetPipelineState(mPSOs["wavesRender"].Get());
+//	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::GpuWaves]);
+//
+//	// Change offscreen texture to be used as an input.
+//	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOffscreenRT->Resource(),
+//		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_GENERIC_READ));
+//
+//	mSobelFilter->Execute(mCommandList.Get(), mPostProcessRootSignature.Get(),
+//		mPSOs["sobel"].Get(), mOffscreenRT->Srv());
+//
+//	//
+//	// Switching back to back buffer rendering.
+//	//
+//
+//	// Indicate a state transition on the resource usage.
+//	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+//		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+//
+//	// Specify the buffers we are going to render to.
+//	mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
+//
+//	mCommandList->SetGraphicsRootSignature(mPostProcessRootSignature.Get());
+//	mCommandList->SetPipelineState(mPSOs["composite"].Get());
+//	mCommandList->SetGraphicsRootDescriptorTable(0, mOffscreenRT->Srv());
+//	mCommandList->SetGraphicsRootDescriptorTable(1, mSobelFilter->OutputSrv());
+//	DrawFullscreenQuad(mCommandList.Get());
 //
 //	// Indicate a state transition on the resource usage.
 //	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
@@ -327,7 +412,7 @@
 //	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
 //}
 //
-//void TreeBillboardsApp::OnMouseDown(WPARAM btnState, int x, int y)
+//void SobelApp::OnMouseDown(WPARAM btnState, int x, int y)
 //{
 //	mLastMousePos.x = x;
 //	mLastMousePos.y = y;
@@ -335,12 +420,12 @@
 //	SetCapture(mhMainWnd);
 //}
 //
-//void TreeBillboardsApp::OnMouseUp(WPARAM btnState, int x, int y)
+//void SobelApp::OnMouseUp(WPARAM btnState, int x, int y)
 //{
 //	ReleaseCapture();
 //}
 //
-//void TreeBillboardsApp::OnMouseMove(WPARAM btnState, int x, int y)
+//void SobelApp::OnMouseMove(WPARAM btnState, int x, int y)
 //{
 //	if ((btnState & MK_LBUTTON) != 0)
 //	{
@@ -372,11 +457,11 @@
 //	mLastMousePos.y = y;
 //}
 //
-//void TreeBillboardsApp::OnKeyboardInput(const GameTimer& gt)
+//void SobelApp::OnKeyboardInput(const GameTimer& gt)
 //{
 //}
 //
-//void TreeBillboardsApp::UpdateCamera(const GameTimer& gt)
+//void SobelApp::UpdateCamera(const GameTimer& gt)
 //{
 //	// Convert Spherical to Cartesian coordinates.
 //	mEyePos.x = mRadius * sinf(mPhi) * cosf(mTheta);
@@ -392,7 +477,7 @@
 //	XMStoreFloat4x4(&mView, view);
 //}
 //
-//void TreeBillboardsApp::AnimateMaterials(const GameTimer& gt)
+//void SobelApp::AnimateMaterials(const GameTimer& gt)
 //{
 //	// Scroll the water material texture coordinates.
 //	auto waterMat = mMaterials["water"].get();
@@ -416,7 +501,7 @@
 //	waterMat->NumFramesDirty = gNumFrameResources;
 //}
 //
-//void TreeBillboardsApp::UpdateObjectCBs(const GameTimer& gt)
+//void SobelApp::UpdateObjectCBs(const GameTimer& gt)
 //{
 //	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 //	for (auto& e : mAllRitems)
@@ -431,6 +516,8 @@
 //			ObjectConstants objConstants;
 //			XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
 //			XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
+//			objConstants.DisplacementMapTexelSize = e->DisplacementMapTexelSize;
+//			objConstants.GridSpatialStep = e->GridSpatialStep;
 //
 //			currObjectCB->CopyData(e->ObjCBIndex, objConstants);
 //
@@ -440,7 +527,7 @@
 //	}
 //}
 //
-//void TreeBillboardsApp::UpdateMaterialCBs(const GameTimer& gt)
+//void SobelApp::UpdateMaterialCBs(const GameTimer& gt)
 //{
 //	auto currMaterialCB = mCurrFrameResource->MaterialCB.get();
 //	for (auto& e : mMaterials)
@@ -466,7 +553,7 @@
 //	}
 //}
 //
-//void TreeBillboardsApp::UpdateMainPassCB(const GameTimer& gt)
+//void SobelApp::UpdateMainPassCB(const GameTimer& gt)
 //{
 //	XMMATRIX view = XMLoadFloat4x4(&mView);
 //	XMMATRIX proj = XMLoadFloat4x4(&mProj);
@@ -501,7 +588,7 @@
 //	currPassCB->CopyData(0, mMainPassCB);
 //}
 //
-//void TreeBillboardsApp::UpdateWaves(const GameTimer& gt)
+//void SobelApp::UpdateWavesGPU(const GameTimer& gt)
 //{
 //	// Every quarter second, generate a random wave.
 //	static float t_base = 0.0f;
@@ -512,36 +599,16 @@
 //		int i = MathHelper::Rand(4, mWaves->RowCount() - 5);
 //		int j = MathHelper::Rand(4, mWaves->ColumnCount() - 5);
 //
-//		float r = MathHelper::RandF(0.2f, 0.5f);
+//		float r = MathHelper::RandF(1.0f, 2.0f);
 //
-//		mWaves->Disturb(i, j, r);
+//		mWaves->Disturb(mCommandList.Get(), mWavesRootSignature.Get(), mPSOs["wavesDisturb"].Get(), i, j, r);
 //	}
 //
 //	// Update the wave simulation.
-//	mWaves->Update(gt.DeltaTime());
-//
-//	// Update the wave vertex buffer with the new solution.
-//	auto currWavesVB = mCurrFrameResource->WavesVB.get();
-//	for (int i = 0; i < mWaves->VertexCount(); ++i)
-//	{
-//		Vertex v;
-//
-//		v.Pos = mWaves->Position(i);
-//		v.Normal = mWaves->Normal(i);
-//
-//		// Derive tex-coords from position by 
-//		// mapping [-w/2,w/2] --> [0,1]
-//		v.TexC.x = 0.5f + v.Pos.x / mWaves->Width();
-//		v.TexC.y = 0.5f - v.Pos.z / mWaves->Depth();
-//
-//		currWavesVB->CopyData(i, v);
-//	}
-//
-//	// Set the dynamic VB of the wave renderitem to the current frame VB.
-//	mWavesRitem->Geo->VertexBufferGPU = currWavesVB->Resource();
+//	mWaves->Update(gt, mCommandList.Get(), mWavesRootSignature.Get(), mPSOs["wavesUpdate"].Get());
 //}
 //
-//void TreeBillboardsApp::LoadTextures()
+//void SobelApp::LoadTextures()
 //{
 //	auto grassTex = std::make_unique<Texture>();
 //	grassTex->Name = "grassTex";
@@ -564,37 +631,33 @@
 //		mCommandList.Get(), fenceTex->Filename.c_str(),
 //		fenceTex->Resource, fenceTex->UploadHeap));
 //
-//	auto treeArrayTex = std::make_unique<Texture>();
-//	treeArrayTex->Name = "treeArrayTex";
-//	treeArrayTex->Filename = L"Textures/treeArray2.dds";
-//	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-//		mCommandList.Get(), treeArrayTex->Filename.c_str(),
-//		treeArrayTex->Resource, treeArrayTex->UploadHeap));
-//
 //	mTextures[grassTex->Name] = std::move(grassTex);
 //	mTextures[waterTex->Name] = std::move(waterTex);
 //	mTextures[fenceTex->Name] = std::move(fenceTex);
-//	mTextures[treeArrayTex->Name] = std::move(treeArrayTex);
 //}
 //
-//void TreeBillboardsApp::BuildRootSignature()
+//void SobelApp::BuildRootSignature()
 //{
 //	CD3DX12_DESCRIPTOR_RANGE texTable;
 //	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 //
+//	CD3DX12_DESCRIPTOR_RANGE displacementMapTable;
+//	displacementMapTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+//
 //	// Root parameter can be a table, root descriptor or root constants.
-//	CD3DX12_ROOT_PARAMETER slotRootParameter[4];
+//	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
 //
 //	// Perfomance TIP: Order from most frequent to least frequent.
-//	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
+//	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_ALL);
 //	slotRootParameter[1].InitAsConstantBufferView(0);
 //	slotRootParameter[2].InitAsConstantBufferView(1);
 //	slotRootParameter[3].InitAsConstantBufferView(2);
+//	slotRootParameter[4].InitAsDescriptorTable(1, &displacementMapTable, D3D12_SHADER_VISIBILITY_ALL);
 //
 //	auto staticSamplers = GetStaticSamplers();
 //
 //	// A root signature is an array of root parameters.
-//	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(4, slotRootParameter,
+//	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(5, slotRootParameter,
 //		(UINT)staticSamplers.size(), staticSamplers.data(),
 //		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 //
@@ -617,26 +680,127 @@
 //		IID_PPV_ARGS(mRootSignature.GetAddressOf())));
 //}
 //
-//void TreeBillboardsApp::BuildDescriptorHeaps()
+//void SobelApp::BuildWavesRootSignature()
 //{
+//	CD3DX12_DESCRIPTOR_RANGE uavTable0;
+//	uavTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+//
+//	CD3DX12_DESCRIPTOR_RANGE uavTable1;
+//	uavTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
+//
+//	CD3DX12_DESCRIPTOR_RANGE uavTable2;
+//	uavTable2.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 2);
+//
+//	// Root parameter can be a table, root descriptor or root constants.
+//	CD3DX12_ROOT_PARAMETER slotRootParameter[4];
+//
+//	// Perfomance TIP: Order from most frequent to least frequent.
+//	slotRootParameter[0].InitAsConstants(6, 0);
+//	slotRootParameter[1].InitAsDescriptorTable(1, &uavTable0);
+//	slotRootParameter[2].InitAsDescriptorTable(1, &uavTable1);
+//	slotRootParameter[3].InitAsDescriptorTable(1, &uavTable2);
+//
+//	// A root signature is an array of root parameters.
+//	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(4, slotRootParameter,
+//		0, nullptr,
+//		D3D12_ROOT_SIGNATURE_FLAG_NONE);
+//
+//	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
+//	ComPtr<ID3DBlob> serializedRootSig = nullptr;
+//	ComPtr<ID3DBlob> errorBlob = nullptr;
+//	HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+//		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+//
+//	if (errorBlob != nullptr)
+//	{
+//		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+//	}
+//	ThrowIfFailed(hr);
+//
+//	ThrowIfFailed(md3dDevice->CreateRootSignature(
+//		0,
+//		serializedRootSig->GetBufferPointer(),
+//		serializedRootSig->GetBufferSize(),
+//		IID_PPV_ARGS(mWavesRootSignature.GetAddressOf())));
+//}
+//
+//void SobelApp::BuildPostProcessRootSignature()
+//{
+//	CD3DX12_DESCRIPTOR_RANGE srvTable0;
+//	srvTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+//
+//	CD3DX12_DESCRIPTOR_RANGE srvTable1;
+//	srvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1);
+//
+//	CD3DX12_DESCRIPTOR_RANGE uavTable0;
+//	uavTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+//
+//	// Root parameter can be a table, root descriptor or root constants.
+//	CD3DX12_ROOT_PARAMETER slotRootParameter[3];
+//
+//	// Perfomance TIP: Order from most frequent to least frequent.
+//	slotRootParameter[0].InitAsDescriptorTable(1, &srvTable0);
+//	slotRootParameter[1].InitAsDescriptorTable(1, &srvTable1);
+//	slotRootParameter[2].InitAsDescriptorTable(1, &uavTable0);
+//
+//	auto staticSamplers = GetStaticSamplers();
+//
+//	// A root signature is an array of root parameters.
+//	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3, slotRootParameter,
+//		(UINT)staticSamplers.size(), staticSamplers.data(),
+//		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+//
+//	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
+//	ComPtr<ID3DBlob> serializedRootSig = nullptr;
+//	ComPtr<ID3DBlob> errorBlob = nullptr;
+//	HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+//		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+//
+//	if (errorBlob != nullptr)
+//	{
+//		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+//	}
+//	ThrowIfFailed(hr);
+//
+//	ThrowIfFailed(md3dDevice->CreateRootSignature(
+//		0,
+//		serializedRootSig->GetBufferPointer(),
+//		serializedRootSig->GetBufferSize(),
+//		IID_PPV_ARGS(mPostProcessRootSignature.GetAddressOf())));
+//}
+//
+//void SobelApp::BuildDescriptorHeaps()
+//{
+//	// Offscreen RTV goes after the swap chain descriptors.
+//	int rtvOffset = SwapChainBufferCount;
+//
+//	UINT srvCount = 3;
+//
+//	int waveSrvOffset = srvCount;
+//	int sobelSrvOffset = waveSrvOffset + mWaves->DescriptorCount();
+//	int offscreenSrvOffset = sobelSrvOffset + mSobelFilter->DescriptorCount();
+//
 //	//
 //	// Create the SRV heap.
 //	//
 //	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-//	srvHeapDesc.NumDescriptors = 4;
+//	srvHeapDesc.NumDescriptors =
+//		srvCount +
+//		mWaves->DescriptorCount() +
+//		mSobelFilter->DescriptorCount() +
+//		1; // extra offscreen render target
 //	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 //	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 //	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
 //
 //	//
-//	// Fill out the heap with actual descriptors.
+//	// Fill out the heap with actual descriptors.  
 //	//
 //	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 //
 //	auto grassTex = mTextures["grassTex"]->Resource;
 //	auto waterTex = mTextures["waterTex"]->Resource;
 //	auto fenceTex = mTextures["fenceTex"]->Resource;
-//	auto treeArrayTex = mTextures["treeArrayTex"]->Resource;
 //
 //	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 //	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -658,20 +822,28 @@
 //	srvDesc.Format = fenceTex->GetDesc().Format;
 //	md3dDevice->CreateShaderResourceView(fenceTex.Get(), &srvDesc, hDescriptor);
 //
-//	// next descriptor
-//	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
+//	auto srvCpuStart = mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+//	auto srvGpuStart = mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 //
-//	auto desc = treeArrayTex->GetDesc();
-//	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-//	srvDesc.Format = treeArrayTex->GetDesc().Format;
-//	srvDesc.Texture2DArray.MostDetailedMip = 0;
-//	srvDesc.Texture2DArray.MipLevels = -1;
-//	srvDesc.Texture2DArray.FirstArraySlice = 0;
-//	srvDesc.Texture2DArray.ArraySize = treeArrayTex->GetDesc().DepthOrArraySize;
-//	md3dDevice->CreateShaderResourceView(treeArrayTex.Get(), &srvDesc, hDescriptor);
+//	auto rtvCpuStart = mRtvHeap->GetCPUDescriptorHandleForHeapStart();
+//
+//	mWaves->BuildDescriptors(
+//		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, waveSrvOffset, mCbvSrvDescriptorSize),
+//		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, waveSrvOffset, mCbvSrvDescriptorSize),
+//		mCbvSrvDescriptorSize);
+//
+//	mSobelFilter->BuildDescriptors(
+//		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, sobelSrvOffset, mCbvSrvDescriptorSize),
+//		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, sobelSrvOffset, mCbvSrvDescriptorSize),
+//		mCbvSrvDescriptorSize);
+//
+//	mOffscreenRT->BuildDescriptors(
+//		CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, offscreenSrvOffset, mCbvSrvDescriptorSize),
+//		CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, offscreenSrvOffset, mCbvSrvDescriptorSize),
+//		CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, rtvOffset, mRtvDescriptorSize));
 //}
 //
-//void TreeBillboardsApp::BuildShadersAndInputLayouts()
+//void SobelApp::BuildShadersAndInputLayout()
 //{
 //	const D3D_SHADER_MACRO defines[] =
 //	{
@@ -686,29 +858,32 @@
 //		NULL, NULL
 //	};
 //
+//	const D3D_SHADER_MACRO waveDefines[] =
+//	{
+//		"DISPLACEMENT_MAP", "1",
+//		NULL, NULL
+//	};
+//
 //	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_0");
+//	mShaders["wavesVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", waveDefines, "VS", "vs_5_0");
 //	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS", "ps_5_0");
 //	mShaders["alphaTestedPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_0");
+//	mShaders["wavesUpdateCS"] = d3dUtil::CompileShader(L"Shaders\\WaveSim.hlsl", nullptr, "UpdateWavesCS", "cs_5_0");
+//	mShaders["wavesDisturbCS"] = d3dUtil::CompileShader(L"Shaders\\WaveSim.hlsl", nullptr, "DisturbWavesCS", "cs_5_0");
+//	mShaders["compositeVS"] = d3dUtil::CompileShader(L"Shaders\\Composite.hlsl", nullptr, "VS", "vs_5_0");
+//	mShaders["compositePS"] = d3dUtil::CompileShader(L"Shaders\\Composite.hlsl", nullptr, "PS", "ps_5_0");
+//	mShaders["sobelCS"] = d3dUtil::CompileShader(L"Shaders\\Sobel.hlsl", nullptr, "SobelCS", "cs_5_0");
 //
-//	mShaders["treeSpriteVS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "VS", "vs_5_0");
-//	mShaders["treeSpriteGS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "GS", "gs_5_0");
-//	mShaders["treeSpritePS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", alphaTestDefines, "PS", "ps_5_0");
 //
-//	mStdInputLayout =
+//	mInputLayout =
 //	{
 //		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 //		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 //		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 //	};
-//
-//	mTreeSpriteInputLayout =
-//	{
-//		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-//		{ "SIZE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-//	};
 //}
 //
-//void TreeBillboardsApp::BuildLandGeometry()
+//void SobelApp::BuildLandGeometry()
 //{
 //	GeometryGenerator geoGen;
 //	GeometryGenerator::MeshData grid = geoGen.CreateGrid(160.0f, 160.0f, 50, 50);
@@ -764,50 +939,42 @@
 //	mGeometries["landGeo"] = std::move(geo);
 //}
 //
-//void TreeBillboardsApp::BuildWavesGeometry()
+//void SobelApp::BuildWavesGeometry()
 //{
-//	std::vector<std::uint16_t> indices(3 * mWaves->TriangleCount()); // 3 indices per face
-//	assert(mWaves->VertexCount() < 0x0000ffff);
+//	GeometryGenerator geoGen;
+//	GeometryGenerator::MeshData grid = geoGen.CreateGrid(160.0f, 160.0f, mWaves->RowCount(), mWaves->ColumnCount());
 //
-//	// Iterate over each quad.
-//	int m = mWaves->RowCount();
-//	int n = mWaves->ColumnCount();
-//	int k = 0;
-//	for (int i = 0; i < m - 1; ++i)
+//	std::vector<Vertex> vertices(grid.Vertices.size());
+//	for (size_t i = 0; i < grid.Vertices.size(); ++i)
 //	{
-//		for (int j = 0; j < n - 1; ++j)
-//		{
-//			indices[k] = i * n + j;
-//			indices[k + 1] = i * n + j + 1;
-//			indices[k + 2] = (i + 1) * n + j;
-//
-//			indices[k + 3] = (i + 1) * n + j;
-//			indices[k + 4] = i * n + j + 1;
-//			indices[k + 5] = (i + 1) * n + j + 1;
-//
-//			k += 6; // next quad
-//		}
+//		vertices[i].Pos = grid.Vertices[i].Position;
+//		vertices[i].Normal = grid.Vertices[i].Normal;
+//		vertices[i].TexC = grid.Vertices[i].TexC;
 //	}
 //
+//	std::vector<std::uint32_t> indices = grid.Indices32;
+//
 //	UINT vbByteSize = mWaves->VertexCount() * sizeof(Vertex);
-//	UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+//	UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint32_t);
 //
 //	auto geo = std::make_unique<MeshGeometry>();
 //	geo->Name = "waterGeo";
 //
-//	// Set dynamically.
-//	geo->VertexBufferCPU = nullptr;
-//	geo->VertexBufferGPU = nullptr;
+//	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+//	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
 //
 //	ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
 //	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+//
+//	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+//		mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
 //
 //	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
 //		mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
 //
 //	geo->VertexByteStride = sizeof(Vertex);
 //	geo->VertexBufferByteSize = vbByteSize;
-//	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
+//	geo->IndexFormat = DXGI_FORMAT_R32_UINT;
 //	geo->IndexBufferByteSize = ibByteSize;
 //
 //	SubmeshGeometry submesh;
@@ -820,7 +987,7 @@
 //	mGeometries["waterGeo"] = std::move(geo);
 //}
 //
-//void TreeBillboardsApp::BuildBoxGeometry()
+//void SobelApp::BuildBoxGeometry()
 //{
 //	GeometryGenerator geoGen;
 //	GeometryGenerator::MeshData box = geoGen.CreateBox(8.0f, 8.0f, 8.0f, 3);
@@ -869,69 +1036,7 @@
 //	mGeometries["boxGeo"] = std::move(geo);
 //}
 //
-//void TreeBillboardsApp::BuildTreeSpritesGeometry()
-//{
-//	struct TreeSpriteVertex
-//	{
-//		XMFLOAT3 Pos;
-//		XMFLOAT2 Size;
-//	};
-//
-//	static const int treeCount = 16;
-//	std::array<TreeSpriteVertex, 16> vertices;
-//	for (UINT i = 0; i < treeCount; ++i)
-//	{
-//		float x = MathHelper::RandF(-45.0f, 45.0f);
-//		float z = MathHelper::RandF(-45.0f, 45.0f);
-//		float y = GetHillsHeight(x, z);
-//
-//		// Move tree slightly above land height.
-//		y += 8.0f;
-//
-//		vertices[i].Pos = XMFLOAT3(x, y, z);
-//		vertices[i].Size = XMFLOAT2(20.0f, 20.0f);
-//	}
-//
-//	std::array<std::uint16_t, 16> indices =
-//	{
-//		0, 1, 2, 3, 4, 5, 6, 7,
-//		8, 9, 10, 11, 12, 13, 14, 15
-//	};
-//
-//	const UINT vbByteSize = (UINT)vertices.size() * sizeof(TreeSpriteVertex);
-//	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
-//
-//	auto geo = std::make_unique<MeshGeometry>();
-//	geo->Name = "treeSpritesGeo";
-//
-//	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
-//	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
-//
-//	ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
-//	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
-//
-//	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-//		mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
-//
-//	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-//		mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
-//
-//	geo->VertexByteStride = sizeof(TreeSpriteVertex);
-//	geo->VertexBufferByteSize = vbByteSize;
-//	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
-//	geo->IndexBufferByteSize = ibByteSize;
-//
-//	SubmeshGeometry submesh;
-//	submesh.IndexCount = (UINT)indices.size();
-//	submesh.StartIndexLocation = 0;
-//	submesh.BaseVertexLocation = 0;
-//
-//	geo->DrawArgs["points"] = submesh;
-//
-//	mGeometries["treeSpritesGeo"] = std::move(geo);
-//}
-//
-//void TreeBillboardsApp::BuildPSOs()
+//void SobelApp::BuildPSOs()
 //{
 //	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 //
@@ -939,7 +1044,7 @@
 //	// PSO for opaque objects.
 //	//
 //	ZeroMemory(&opaquePsoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-//	opaquePsoDesc.InputLayout = { mStdInputLayout.data(), (UINT)mStdInputLayout.size() };
+//	opaquePsoDesc.InputLayout = { mInputLayout.data(), (UINT)mInputLayout.size() };
 //	opaquePsoDesc.pRootSignature = mRootSignature.Get();
 //	opaquePsoDesc.VS =
 //	{
@@ -998,41 +1103,89 @@
 //	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&alphaTestedPsoDesc, IID_PPV_ARGS(&mPSOs["alphaTested"])));
 //
 //	//
-//	// PSO for tree sprites
+//	// PSO for drawing waves
 //	//
-//	D3D12_GRAPHICS_PIPELINE_STATE_DESC treeSpritePsoDesc = opaquePsoDesc;
-//	treeSpritePsoDesc.VS =
+//	D3D12_GRAPHICS_PIPELINE_STATE_DESC wavesRenderPSO = transparentPsoDesc;
+//	wavesRenderPSO.VS =
 //	{
-//		reinterpret_cast<BYTE*>(mShaders["treeSpriteVS"]->GetBufferPointer()),
-//		mShaders["treeSpriteVS"]->GetBufferSize()
+//		reinterpret_cast<BYTE*>(mShaders["wavesVS"]->GetBufferPointer()),
+//		mShaders["wavesVS"]->GetBufferSize()
 //	};
-//	treeSpritePsoDesc.GS =
-//	{
-//		reinterpret_cast<BYTE*>(mShaders["treeSpriteGS"]->GetBufferPointer()),
-//		mShaders["treeSpriteGS"]->GetBufferSize()
-//	};
-//	treeSpritePsoDesc.PS =
-//	{
-//		reinterpret_cast<BYTE*>(mShaders["treeSpritePS"]->GetBufferPointer()),
-//		mShaders["treeSpritePS"]->GetBufferSize()
-//	};
-//	treeSpritePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-//	treeSpritePsoDesc.InputLayout = { mTreeSpriteInputLayout.data(), (UINT)mTreeSpriteInputLayout.size() };
-//	treeSpritePsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+//	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&wavesRenderPSO, IID_PPV_ARGS(&mPSOs["wavesRender"])));
 //
-//	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&treeSpritePsoDesc, IID_PPV_ARGS(&mPSOs["treeSprites"])));
+//	//
+//	// PSO for compositing post process
+//	//
+//	D3D12_GRAPHICS_PIPELINE_STATE_DESC compositePSO = opaquePsoDesc;
+//	compositePSO.pRootSignature = mPostProcessRootSignature.Get();
+//
+//	// Disable depth test.
+//	compositePSO.DepthStencilState.DepthEnable = false;
+//	compositePSO.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+//	compositePSO.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+//
+//	compositePSO.VS =
+//	{
+//		reinterpret_cast<BYTE*>(mShaders["compositeVS"]->GetBufferPointer()),
+//		mShaders["compositeVS"]->GetBufferSize()
+//	};
+//	compositePSO.PS =
+//	{
+//		reinterpret_cast<BYTE*>(mShaders["compositePS"]->GetBufferPointer()),
+//		mShaders["compositePS"]->GetBufferSize()
+//	};
+//	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&compositePSO, IID_PPV_ARGS(&mPSOs["composite"])));
+//
+//	//
+//	// PSO for disturbing waves
+//	//
+//	D3D12_COMPUTE_PIPELINE_STATE_DESC wavesDisturbPSO = {};
+//	wavesDisturbPSO.pRootSignature = mWavesRootSignature.Get();
+//	wavesDisturbPSO.CS =
+//	{
+//		reinterpret_cast<BYTE*>(mShaders["wavesDisturbCS"]->GetBufferPointer()),
+//		mShaders["wavesDisturbCS"]->GetBufferSize()
+//	};
+//	wavesDisturbPSO.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+//	ThrowIfFailed(md3dDevice->CreateComputePipelineState(&wavesDisturbPSO, IID_PPV_ARGS(&mPSOs["wavesDisturb"])));
+//
+//	//
+//	// PSO for updating waves
+//	//
+//	D3D12_COMPUTE_PIPELINE_STATE_DESC wavesUpdatePSO = {};
+//	wavesUpdatePSO.pRootSignature = mWavesRootSignature.Get();
+//	wavesUpdatePSO.CS =
+//	{
+//		reinterpret_cast<BYTE*>(mShaders["wavesUpdateCS"]->GetBufferPointer()),
+//		mShaders["wavesUpdateCS"]->GetBufferSize()
+//	};
+//	wavesUpdatePSO.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+//	ThrowIfFailed(md3dDevice->CreateComputePipelineState(&wavesUpdatePSO, IID_PPV_ARGS(&mPSOs["wavesUpdate"])));
+//
+//	//
+//	// PSO for sobel
+//	//
+//	D3D12_COMPUTE_PIPELINE_STATE_DESC sobelPSO = {};
+//	sobelPSO.pRootSignature = mPostProcessRootSignature.Get();
+//	sobelPSO.CS =
+//	{
+//		reinterpret_cast<BYTE*>(mShaders["sobelCS"]->GetBufferPointer()),
+//		mShaders["sobelCS"]->GetBufferSize()
+//	};
+//	sobelPSO.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+//	ThrowIfFailed(md3dDevice->CreateComputePipelineState(&sobelPSO, IID_PPV_ARGS(&mPSOs["sobel"])));
 //}
 //
-//void TreeBillboardsApp::BuildFrameResources()
+//void SobelApp::BuildFrameResources()
 //{
 //	for (int i = 0; i < gNumFrameResources; ++i)
 //	{
 //		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-//			1, (UINT)mAllRitems.size(), (UINT)mMaterials.size(), mWaves->VertexCount()));
+//			1, (UINT)mAllRitems.size(), (UINT)mMaterials.size()));
 //	}
 //}
 //
-//void TreeBillboardsApp::BuildMaterials()
+//void SobelApp::BuildMaterials()
 //{
 //	auto grass = std::make_unique<Material>();
 //	grass->Name = "grass";
@@ -1060,25 +1213,19 @@
 //	wirefence->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
 //	wirefence->Roughness = 0.25f;
 //
-//	auto treeSprites = std::make_unique<Material>();
-//	treeSprites->Name = "treeSprites";
-//	treeSprites->MatCBIndex = 3;
-//	treeSprites->DiffuseSrvHeapIndex = 3;
-//	treeSprites->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-//	treeSprites->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
-//	treeSprites->Roughness = 0.125f;
-//
 //	mMaterials["grass"] = std::move(grass);
 //	mMaterials["water"] = std::move(water);
 //	mMaterials["wirefence"] = std::move(wirefence);
-//	mMaterials["treeSprites"] = std::move(treeSprites);
 //}
 //
-//void TreeBillboardsApp::BuildRenderItems()
+//void SobelApp::BuildRenderItems()
 //{
 //	auto wavesRitem = std::make_unique<RenderItem>();
 //	wavesRitem->World = MathHelper::Identity4x4();
 //	XMStoreFloat4x4(&wavesRitem->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
+//	wavesRitem->DisplacementMapTexelSize.x = 1.0f / mWaves->ColumnCount();
+//	wavesRitem->DisplacementMapTexelSize.y = 1.0f / mWaves->RowCount();
+//	wavesRitem->GridSpatialStep = mWaves->SpatialStep();
 //	wavesRitem->ObjCBIndex = 0;
 //	wavesRitem->Mat = mMaterials["water"].get();
 //	wavesRitem->Geo = mGeometries["waterGeo"].get();
@@ -1087,9 +1234,7 @@
 //	wavesRitem->StartIndexLocation = wavesRitem->Geo->DrawArgs["grid"].StartIndexLocation;
 //	wavesRitem->BaseVertexLocation = wavesRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
 //
-//	mWavesRitem = wavesRitem.get();
-//
-//	mRitemLayer[(int)RenderLayer::Transparent].push_back(wavesRitem.get());
+//	mRitemLayer[(int)RenderLayer::GpuWaves].push_back(wavesRitem.get());
 //
 //	auto gridRitem = std::make_unique<RenderItem>();
 //	gridRitem->World = MathHelper::Identity4x4();
@@ -1116,25 +1261,12 @@
 //
 //	mRitemLayer[(int)RenderLayer::AlphaTested].push_back(boxRitem.get());
 //
-//	auto treeSpritesRitem = std::make_unique<RenderItem>();
-//	treeSpritesRitem->World = MathHelper::Identity4x4();
-//	treeSpritesRitem->ObjCBIndex = 3;
-//	treeSpritesRitem->Mat = mMaterials["treeSprites"].get();
-//	treeSpritesRitem->Geo = mGeometries["treeSpritesGeo"].get();
-//	treeSpritesRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
-//	treeSpritesRitem->IndexCount = treeSpritesRitem->Geo->DrawArgs["points"].IndexCount;
-//	treeSpritesRitem->StartIndexLocation = treeSpritesRitem->Geo->DrawArgs["points"].StartIndexLocation;
-//	treeSpritesRitem->BaseVertexLocation = treeSpritesRitem->Geo->DrawArgs["points"].BaseVertexLocation;
-//
-//	mRitemLayer[(int)RenderLayer::AlphaTestedTreeSprites].push_back(treeSpritesRitem.get());
-//
 //	mAllRitems.push_back(std::move(wavesRitem));
 //	mAllRitems.push_back(std::move(gridRitem));
 //	mAllRitems.push_back(std::move(boxRitem));
-//	mAllRitems.push_back(std::move(treeSpritesRitem));
 //}
 //
-//void TreeBillboardsApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
+//void SobelApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 //{
 //	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 //	UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
@@ -1165,7 +1297,17 @@
 //	}
 //}
 //
-//std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> TreeBillboardsApp::GetStaticSamplers()
+//void SobelApp::DrawFullscreenQuad(ID3D12GraphicsCommandList* cmdList)
+//{
+//	// Null-out IA stage since we build the vertex off the SV_VertexID in the shader.
+//	cmdList->IASetVertexBuffers(0, 1, nullptr);
+//	cmdList->IASetIndexBuffer(nullptr);
+//	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+//
+//	cmdList->DrawInstanced(6, 1, 0, 0);
+//}
+//
+//std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> SobelApp::GetStaticSamplers()
 //{
 //	// Applications usually only need a handful of samplers.  So just define them all up front
 //	// and keep them available as part of the root signature.  
@@ -1222,12 +1364,12 @@
 //		anisotropicWrap, anisotropicClamp };
 //}
 //
-//float TreeBillboardsApp::GetHillsHeight(float x, float z)const
+//float SobelApp::GetHillsHeight(float x, float z)const
 //{
 //	return 0.3f * (z * sinf(0.1f * x) + x * cosf(0.1f * z));
 //}
 //
-//XMFLOAT3 TreeBillboardsApp::GetHillsNormal(float x, float z)const
+//XMFLOAT3 SobelApp::GetHillsNormal(float x, float z)const
 //{
 //	// n = (-df/dx, 1, -df/dz)
 //	XMFLOAT3 n(

@@ -1,0 +1,290 @@
+GPUs have been optimized to process a large amount of memory from a single location or sequential locations (so-called
+streaming operation); this is in contrast to a CPU designed for random memory accesses. Moreover, because vertices and pixels
+can be independently processed, GPUs have been architected to be massively parallel; for example, the NVIDIA "Fermi"
+architecture supports up to sixteen streaming multiprocessors of thirty-two CUDA cores for a total of 512 CUDA cores.
+
+Using the GPU for non-graphical applications is called general purpose GPU (GPGPU) programming. Not all algorithms are ideal
+for a GPU implementation; GPUs need data-parallel algorithms to take advantage of the parallel architecture of the GPU.
+
+That is, we need a large amount of data elements that will have similar operations performed on them so that the elements can
+be processed in parallel. Graphical operations like shading pixels is a good example, as each pixel fragment being drawn is
+operated on by the pixel shader.
+
+The relative memory bandwidth speeds between CPU and RAM, CPU and GPU, and GPU and VRAM. These numbers are just illustrative
+numbers to show the order of magnitude difference between the bandwidths. Observe that transferring memory between CPU and GPU
+is the bottleneck.
+
+The compute shader is not part of the rendering pipeline but sits off to the side. The compute shader can read and write to
+GPU resources. The compute shader can be mixed with graphics rendering, or used alone for GPGPU programming.
+
+For GPGPU programming, the user generally needs to access the computation results back on the CPU. This requires copying the
+result from video memory to system memory, which is slow, but may be a negligible issue compared to the speed up from doing the
+computation on the GPU. For graphics, we typically use the computation result as an input to the rendering pipeline, so no
+transfer from GPU to CPU is needed. For example, we can blur a texture with the compute shader, and then bind a shader resource
+view to that blurred textur to a shader as input.
+
+Essentially, the Compute Shader allows us to access the GPU to implement data-parallel algorithms without drawing anything. As
+mentioned, this is useful for GPGPU programming, but there are still many graphical effects that can be implemented on the
+compute shader as well - so it is still very relevant for a graphics programmer.
+
+And as already mentioned, because the Compute Shader is part of Direct3D, it reads from and writes to Direct3D resources,
+which enables us to bind the output of a compute shader directly to the rendering pipeline.
+
+In GPU programming, the number of threads desired for execution is divided up into a grid of thread groups. A thread group is
+executed on a single multiprocessor. Therefore, if you had a GPU with sixteen multiprocessors, you would want to break up your
+problem into at least sixteen thread groups so that each multiprocessor has work to do. For better performance, you would want
+at least two thread groups per multiprocessor since a multiprocessor can switch to processing the threads in a different group
+to hide stalls (a stall can occur, for example, if a shader needs to wait for a texture operation result before it can continue
+to the next instruction).
+
+Each thread group gets shared memory that all threads in that group can access; a thread cannot access shared memory in a
+different thread group. Thread synchronization operations can take place amongst the threads in a thread group, but different
+thread groups cannot be synchronized. In fact, we have no control over the order in which different thread groups are
+processed. This makes sense as the thread groups can be executed on different multiprocessors.
+
+A thread group consists of n threads. The hardware actually divides these threads up into warps (thirty-two threads per warp),
+and a warp is processed by the multiprocessor in SIMD32 (i.e., the same instructions are executed for the thirty-two threads
+simultaneously). Each CUDA core processes a thread and recall that a "Fermi" multiprocessor has thirty-two CUDA cores (so a
+CUDA core is like an SIMD "lane.") In Direct3D, you can specify a thread group size with dimensions that are not multiples of
+thirty-two, but for performance reasons, the thread group dimensions should always be multiples of the warp size.
+
+Thread group sizes of 256 seems to be a good starting point that should work well for various hardware. Then experiment with
+other sizes. Changing the number of threads per group will change the number of groups dispatched.
+
+NVIDIA hardware uses warp sizes of thirty-two threads. ATI uses "wavefront" sizes of sixty-four threads, and recommends the
+thread group size should always be a multiple of the wavefront size. Also, the warp size or wavefront size can change in future
+generations of hardware.
+
+In Direct3D, thread groups are launched via the following method call:
+void ID3D12GraphicsCommandList::Dispatch(UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ);
+
+A compute shader consists of the following components:
+
+1. Global variable access via constant buffers.
+2. Input and output resources.
+3. The [numthreads(X, Y, Z)] attribute, which specifies the number of threads, in the thread group as a 3D grid of threads.
+4. The shader body that has the instructions to execute for each thread.
+5. Thread identification system value parameters.
+
+To enable a compute shader, we use a special "compute pipeline state description." This structure has far fewer fields than
+D3D12_GRAPHICS_PIPELINE_STATE_DESC because the compute shader sits to the side of the graphics pipeline, so all the graphics
+pipeline state does not apply to compute shaders and thus does not need to be set.
+
+The root signature defines what parameters the shader expects as input (CBVs, SRVs, etc.). The cs field is where we specify the
+compute shader.
+
+Two types of resources can be bound to a compute shader: buffers and textures.
+
+The input textures (Texture2D) gInputA and gInputB are bound as inputs to the shader by creating (SRVs) to the textures and
+passing them as arguments to the root parameters; for example:
+
+cmdList->SetComputeRootDescriptorTable(1, mSrvA);
+cmdList->SetComputeRootDescriptorTable(2, mSrvB);
+
+This is exactly the same way we bind shader resource views to pixel shaders. Note that SRVs are read-only.
+
+The compute shader defined in the previous section defined one output resource: RWTexture2D<float4> gOutput;
+
+Outputs are treated special and have the special prefix to their type "RW," which stands for read-write, and as the name
+implies, you can read and write to elements in this resource in the compute shader.
+
+Also, it is necessary to specify the type and dimensions of the output with the template angle brackets syntax <float4>. If
+our output was a 2D integer like DXGI_FORMAT_R8G8_SINT, then we would have instead written: RWTexture2D<int2> gOutput;
+
+Binding an output resource is different than an input, however. To bind a resource that we will write to in a compute shader,
+we need to bind it using a new view type called an unordered access view (UAV), which is represented in code by a descriptor
+handle and described in code by the D3D12_UNORDERED_ACCESS_VIEW_DESC structure. This is created in a similar way to a shader
+resource view.
+
+Recall that a descriptor heap of type D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV can mix CBVs, SRVs, and UAVs all in the same heap.
+Therefore, we can put UAV descriptors in that heap. Once they are in a heap, we simply pass the descriptor handles as arguments
+to the root parameters to bind the resources to the pipeline for a dispatch call.
+
+The root signature defines that the shader expects a constant buffer for root parameter slot 0, an SRV for root parameter
+slot 1, and a UAV for root parameter slot 2.
+
+The elements of the textures can be accessed using 2D indices. In the compute shader, we index the texture based on the
+dispatch thread ID. Each thread is given a unique dispatch ID.
+
+Because the compute shader is executed on the GPU, it has access to the usual GPU tools. In particular, we can sample textures
+using texture filtering. There are two issues, however. First, we cannot use the Sample method, but instead must use the
+SampleLevel method. SampleLevel takes an additional third parameter that specifies the mipmap level of the texture; 0 takes the
+top most level, 1 takes the second mip level, etc., and fractional values are used to interpolate between two mip levels of
+linear mip filtering is enabled.
+
+On the other hand, Sample automatically selects the best mipmap level to use based on how many
+pixels on the screen the texture will cover. Since compute shaders are not used for rendering directly, it does not know how to
+automatically select a mipmap level like this, and therefore, we must explicitly specify the level with SampleLevel in a
+compute shader.
+
+The second issue is that when we sample a texture, we use normalized texture-coordinates in the range [0, 1]^2 instead of
+integer indices. However, the texture size (width, height) can be set to a constant buffer variable, and then normalized
+texture coordinates can be derived from the integer indices (x, y):
+
+u = x / width
+v = y / height
+
+A structured buffer is simply a buffer of elements of the same type - essentially an array. As you can see, the type can be a
+user-defined structure in the HLSL.
+
+A structured buffer used as an SRV can be created just like we have been creating our vertex and index buffers. A structured
+buffer used as a UAV is almost created the same way, except that we must specify the flag
+D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, and it is good practice to put it in the D3D12_RESOURCE_STATE_UNORDERED_ACCESS
+state.
+
+Structured buffers are bound to the pipeline just like textures. We create SRVs or UAV descriptors to them and pass them as
+arguments to root parameters that take descriptor tables. Alternatively, we can define the root signature to take root
+descriptors so that we can pass the virtual address of resources directly as root arguments without the need to go through a
+descriptor heap (this only works for SRVs and UAVs to buffer resource, not textures).
+
+There is also such a thing called a raw buffer, which is basically a byte array of data. Byte offsets are used and the data can
+then be casted to the proper type. This could be useful for storing different data types in the same buffer, for example. To be
+a raw buffer, the resource must be created with the DXGI_FORMAT_R32_TYPELESS format, and when creating the UAV we must specify
+the D3D12_BUFFER_UAV_FLAG_RAW flag.
+
+Typically, when we use the compute shader to process a texture, we will display that processed texture on the screen;
+therefore, we visually see the result to verify the accuracy of our compute shader. With structured buffer calculations, and
+GPGPU computing in general, we might not display our results at all.
+
+So the question is how do we get our results from GPU memory (remember when we write to a structured buffer via a UAV, that
+buffer is stored in GPU memory) back to system memory. The required way is to create system memory buffer with heap properties
+D3D12_HEAP_TYPE_READBACK. Then we can use the ID3D12GraphicsCommandList::CopyResource method to copy the GPU resource to the
+system memory resource.
+
+The system memory resource must be the same type and size as the resource we want to copy. Finally, we can map the system
+memory buffer with the mapping API to read it on the CPU. From there we can then copy the data into a system memory array for
+further processing on the CPU side, save the data to file, or what have you.
+
+We see that copying between CPU and GPU memory is the slowest. For graphics, we never want to do this copy per frame, as it
+will kill performance. For GPGPU programming, it is generally required to get the results back on the CPU; however, this is
+usually not a big deal for GPGPU programming, as the gains of using a GPU outweigh the copy cost from GPU to CPU-moreover,
+for GPGPU, the copy will be less frequent than "per frame." For example, suppose an application uses GPGPU programming to
+implement a costly image processing calculation. After the calculation is done the result is copied to the CPU. The GPU is not
+used again until the user requests another calculation.
+
+Each thread group is assigned an ID by the system; this is called the group ID and has the system value semantic SV_GroupID.
+
+Inside a thread group, each thread is given a unique ID relative to its group. If the thread group has size X x Y x Z, then the
+group thread IDs will range from (0, 0, 0) to (X - 1, Y - 1, Z - 1). The system value semantic for the group thread ID is
+SV_GroupThreadID.
+
+A Dispatch call dispatches a grid of thread groups. The dispatch thread ID uniquely identifies a thread relative to all the
+threads generated by a Dispatch call. In other words, whereas the group thread ID uniquely identifies a thread relative to its
+thread group, the dispatch thread ID uniquely identifies a thread relative to the union of all the threads from all the thread
+groups dispatched by a Dispatch call. The dispatch thread ID has the system value semantic SV_DispatchThreadID.
+
+A linear index version of the group thread ID is given to us by Direct3D through the SV_GroupIndex system value.
+
+Regarding the indexing coordinate order, the fi rst coordinate gives the x-position (or column) and the second coordinate gives
+the y-position (or row). This is in contrast to common matrix notation, where Mij denotes the element in the ith row and jth
+column.
+
+The SV_GroupThreadID is useful for indexing into thread local storage memory.
+
+Append structured buffers do not dynamically grow. They must still be large enough to store all the elements you will append
+to it.
+
+Thread groups are given a section of so-called shared memory or thread local storage. Accessing this memory is fast and can be
+thought of being as fast as a hardware cache. In the compute shader code, shared memory is declared like so:
+groupshared float4 gCache[256];
+
+The array size can be whatever you want, but the maximum size of group shared memory is 32kb. Because the shared memory is
+local to the thread group, it is indexed with the SV_ThreadGroupID; so, for example, you might give each thread in the group
+access to one slot in the shared memory.
+
+Using too much shared memory can lead to performance issues. Suppose a multiprocessor supports 32kb of shared memory, and your
+compute shader requires 20kb of shared memory. This means that only one thread group will fi t on the multiprocessor because
+there is not enough memory left for another thread group, as 20kb + 20kb = 40kb > 32kb. This limits the parallelism of the GPU,
+as a multiprocessor cannot switch off between thread groups to hide latency (recall at least two thread groups per
+multiprocessor is recommended). Thus, even though the hardware technically supports 32kb of shared memory, performance
+improvements can be achieved by using less.
+
+A common application of shared memory is to store texture values in it. Certain algorithms, such as blurs, require fetching the
+same texel multiple times. Sampling textures is actually one of the slower GPU operations because memory bandwidth and memory
+latency have not improved as much as the raw computational power of GPUs. A thread group can avoid redundant texture fetches by
+preloading all the needed texture samples into the shared memory array. The algorithm then proceeds to look up the texture
+samples in the shared memory array, which is very fast.
+
+The blurring algorithm we use is described as follows: For each pixel Pij. in the source image, compute the weighted average of
+the m * n matrix of pixels centered about the pixel Pij; this weighted average becomes the ijth pixel in the blurred image.
+Mathematically, where m = 2a + 1 and n = 2b + 1. By forcing m and n to be odd, we ensure that the m * n matrix always has a
+natural "center." We call a the vertical blur radius and b the horizontal blur radius. If a = b, then we just refer to the blur
+radius without having to specify the dimension. The m * n matrix of weights is called the blur kernel. Observe also that the
+weights must sum to 1. If the sum of the weights is less than one, the blurred image will appear darker as color has been
+removed. If the sum of the weights is greater than one, the blurred image will appear brighter as color has been added.
+
+Suppose that the blur kernel is a 9 * 9 matrix, so that we needed a total of 81 samples to do the 2D blur. By separating the
+blur into two 1D blurs, we only need 9 + 9 = 18 samples. Typically, we will be blurring textures; fetching texture samples is
+expensive, so reducing texture samples by separating a blur is a welcome improvement. Even if a blur is not separable (some
+blur operators are not), we can often make the simplification and assume it is for the sake of performance, as long as the
+final image looks accurate enough.
+
+We instruct Direct3D to render to the back buffer by binding a render target view of the back buffer to the OM stage of the
+rendering pipeline:
+
+	// Specify the buffers we are going to render to.
+	mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(),ctrue, &DepthStencilView());
+
+The contents of the back buffer are eventually displayed on the screen when the back buffer is presented via the
+IDXGISwapChain::Present method.
+
+A texture that will be used as a render target must be created with the flag D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET.
+
+If we think about this code, there is nothing that stops us from creating another texture, creating a render target view to it,
+and binding it to the OM stage of the rendering pipeline. Thus we will be drawing to this different "off-screen" texture
+(possible with a different camera) instead of the back buffer. This technique is known as render-to-off-screen-texture or
+simply render-to-texture. The only difference is that since this texture is not the back buffer, it does not get displayed to
+the screen during presentation.
+
+Consequently, render-to-texture might seem worthless at first as it does not get presented to the screen. But, after we have
+rendered-to-texture, we can bind the back buffer back to the OM stage, and resume drawing geometry to the back buffer. We can
+texture the geometry with the texture we generated during the render-to-texture period. This strategy is used to implement a
+variety of special effects.
+
+For example, you can render-to-texture the scene from a bird's eye view to a texture. Then, when drawing to the back buffer,
+you can draw a quad in the lower-right corner of the screen with the bird's eye view texture to simulate a radar system. Other
+render-to-texture techniques include:
+
+1. Shadow mapping
+2. Screen Space Ambient Occlusion
+3. Dynamic reflections with cube maps
+
+Using render-to-texture, implementing a blurring algorithm on the GPU would work the following way: render our normal demo
+scene to an off-screen texture. This texture will be the input into our blurring algorithm that executes on the compute shader.
+After the texture is blurred, we will draw a full screen quad to the back buffer with the blurred texture applied so that we
+can see the blurred result to test our blur implementation. The steps are outlined as follows:
+
+1. Draw scene as usual to an off-screen texture.
+2. Blur the off-screen texture using a compute shader program.
+3. Restore the back buffer as the render target, and draw a full screen quad with the blurred texture applied.
+
+Using render-to-texture to implement a blur works fine, and is the required approach if we want to render the scene to a
+different sized texture than the back buffer. However, if we make the assumption that our off-screen textures match the format
+and size of our back buffer, instead of redirecting rendering to our offscreen texture, we can render to the back buffer as
+usual, and then do a CopyResource to copy the back-buffer contents to our off-screen texture. Then we can do our compute work
+on our off-screen textures, and then draw a full-screen quad to the back buffer with the blurred texture to produce the final
+screen output.
+
+	// Copy the input (back-buffer in this example) to BlurMap0.
+	cmdList->CopyResource(mBlurMap0.Get(), input);
+
+Blurring is an expensive operation and the time it takes is a function of the image size being blurred. Often, when rendering
+the scene to an off-screen texture, the off-screen texture will be made a quarter of the size of the back buffer. This speeds
+up the drawing to the off-screen texture (less pixels to fill); moreover, it speeds up the blur (less pixels to blur), and
+there is additional blurring performed by the magnification texture filter when the texture is stretched from a quarter of
+the screen resolution to the full screen resolution.
+
+Consider just two neighboring pixels in the input image, and suppose that the blur kernel is 1 x 7. Observe that six out of the
+eight unique pixels are sampled twice - once for each pixel.
+
+Pixels near the boundaries of the thread group will read pixels outside the thread group due to the blur radius.
+
+Reading from an out-of-bounds index is not illegal - it is defined to return 0 (and writing to an out-of-bounds index results
+in a no-op). However, we do not want to read 0 when we go out-of-bounds, as it means 0 colors (i.e., black) will make their way
+into the blur at the boundaries.
+
+For the last line, gOutput[dispatchThreadID.xy] = blurColor; it is possible in the right-most thread group to have extraneous
+threads that do not correspond to an element in the output texture. That is, the dispatchThreadID.xy will be an out-of-bounds
+index for the output texture. However, we do not need to worry about handling this case, as an out-of-bound write results in a
+no-op.
+

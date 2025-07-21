@@ -31,9 +31,6 @@
     <Filter Include="Source Files\Chapter 8 source files">
       <UniqueIdentifier>{1fcab6c2-1af1-47be-8d6b-627bee26ffee}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Chapter 8 header files">
-      <UniqueIdentifier>{61210779-dacf-46d6-acab-67913c42d83a}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Chapter 9 source files">
       <UniqueIdentifier>{eec77c03-89d0-42da-be12-c020f37a4e5c}</UniqueIdentifier>
     </Filter>
@@ -45,6 +42,12 @@
     </Filter>
     <Filter Include="Source Files\Chapter 12 source files">
       <UniqueIdentifier>{7ae10aa7-bb85-4ff9-bbaa-c52907ba2080}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Chapter 13 source files">
+      <UniqueIdentifier>{4059923a-f4cb-4445-8c62-20cb3ac8fd55}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Chapter 13 header files">
+      <UniqueIdentifier>{e12b8925-c973-4181-9171-cb197ae4f801}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -117,6 +120,30 @@
     <ClCompile Include="TreeBillboards-Chapter12.cpp">
       <Filter>Source Files\Chapter 12 source files</Filter>
     </ClCompile>
+    <ClCompile Include="BlurApp-Chapter13.cpp">
+      <Filter>Source Files\Chapter 13 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="BlurFilter.cpp">
+      <Filter>Source Files\Chapter 13 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="SobelFilter.cpp">
+      <Filter>Source Files\Chapter 13 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderTarget.cpp">
+      <Filter>Source Files\Chapter 13 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="GpuWaves.cpp">
+      <Filter>Source Files\Chapter 13 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="SobelApp-Chapter13.cpp">
+      <Filter>Source Files\Chapter 13 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="VecAdd-Chapter13.cpp">
+      <Filter>Source Files\Chapter 13 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="WavesCS-Chapter13.cpp">
+      <Filter>Source Files\Chapter 13 source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\Notes Introduction to DirectX12.txt">
@@ -158,6 +185,9 @@
     <Text Include="Notes\Notes Chapter 12 The Geometry Shader.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="Notes Chapter 13 The Compute Shader.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FrameResource.h">
@@ -193,6 +223,18 @@
     <ClInclude Include="Common\UploadBuffer.h">
       <Filter>Header Files\DirectX library headers</Filter>
     </ClInclude>
+    <ClInclude Include="BlurFilter.h">
+      <Filter>Header Files\Chapter 13 header files</Filter>
+    </ClInclude>
+    <ClInclude Include="SobelFilter.h">
+      <Filter>Header Files\Chapter 13 header files</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderTarget.h">
+      <Filter>Header Files\Chapter 13 header files</Filter>
+    </ClInclude>
+    <ClInclude Include="GpuWaves.h">
+      <Filter>Header Files\Chapter 13 header files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\LandAndWavesColor.hlsl">
@@ -211,6 +253,21 @@
       <Filter>Shader Files</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\TreeSprite.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Blur.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Composite.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Sobel.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\WaveSim.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\VecAdd.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>

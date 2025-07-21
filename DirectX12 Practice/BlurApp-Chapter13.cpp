@@ -1,5 +1,5 @@
 ////***************************************************************************************
-//// TreeBillboardsApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
+//// BlurApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
 ////***************************************************************************************
 //
 //#include "d3dApp.h"
@@ -8,6 +8,7 @@
 //#include "GeometryGenerator.h"
 //#include "FrameResource.h"
 //#include "Waves.h"
+//#include "BlurFilter.h"
 //
 //using Microsoft::WRL::ComPtr;
 //using namespace DirectX;
@@ -57,17 +58,16 @@
 //	Opaque = 0,
 //	Transparent,
 //	AlphaTested,
-//	AlphaTestedTreeSprites,
 //	Count
 //};
 //
-//class TreeBillboardsApp : public D3DApp
+//class BlurApp : public D3DApp
 //{
 //public:
-//	TreeBillboardsApp(HINSTANCE hInstance);
-//	TreeBillboardsApp(const TreeBillboardsApp& rhs) = delete;
-//	TreeBillboardsApp& operator=(const TreeBillboardsApp& rhs) = delete;
-//	~TreeBillboardsApp();
+//	BlurApp(HINSTANCE hInstance);
+//	BlurApp(const BlurApp& rhs) = delete;
+//	BlurApp& operator=(const BlurApp& rhs) = delete;
+//	~BlurApp();
 //
 //	virtual bool Initialize()override;
 //
@@ -90,12 +90,12 @@
 //
 //	void LoadTextures();
 //	void BuildRootSignature();
+//	void BuildPostProcessRootSignature();
 //	void BuildDescriptorHeaps();
-//	void BuildShadersAndInputLayouts();
+//	void BuildShadersAndInputLayout();
 //	void BuildLandGeometry();
 //	void BuildWavesGeometry();
 //	void BuildBoxGeometry();
-//	void BuildTreeSpritesGeometry();
 //	void BuildPSOs();
 //	void BuildFrameResources();
 //	void BuildMaterials();
@@ -113,11 +113,12 @@
 //	FrameResource* mCurrFrameResource = nullptr;
 //	int mCurrFrameResourceIndex = 0;
 //
-//	UINT mCbvSrvDescriptorSize = 0;
+//	UINT mCbvSrvUavDescriptorSize = 0;
 //
 //	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+//	ComPtr<ID3D12RootSignature> mPostProcessRootSignature = nullptr;
 //
-//	ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
+//	ComPtr<ID3D12DescriptorHeap> mCbvSrvUavDescriptorHeap = nullptr;
 //
 //	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 //	std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
@@ -125,8 +126,7 @@
 //	std::unordered_map<std::string, ComPtr<ID3DBlob>> mShaders;
 //	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> mPSOs;
 //
-//	std::vector<D3D12_INPUT_ELEMENT_DESC> mStdInputLayout;
-//	std::vector<D3D12_INPUT_ELEMENT_DESC> mTreeSpriteInputLayout;
+//	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 //
 //	RenderItem* mWavesRitem = nullptr;
 //
@@ -137,6 +137,8 @@
 //	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
 //
 //	std::unique_ptr<Waves> mWaves;
+//
+//	std::unique_ptr<BlurFilter> mBlurFilter;
 //
 //	PassConstants mMainPassCB;
 //
@@ -161,7 +163,7 @@
 //
 //	try
 //	{
-//		TreeBillboardsApp theApp(hInstance);
+//		BlurApp theApp(hInstance);
 //		if (!theApp.Initialize())
 //			return 0;
 //
@@ -174,18 +176,18 @@
 //	}
 //}
 //
-//TreeBillboardsApp::TreeBillboardsApp(HINSTANCE hInstance)
+//BlurApp::BlurApp(HINSTANCE hInstance)
 //	: D3DApp(hInstance)
 //{
 //}
 //
-//TreeBillboardsApp::~TreeBillboardsApp()
+//BlurApp::~BlurApp()
 //{
 //	if (md3dDevice != nullptr)
 //		FlushCommandQueue();
 //}
 //
-//bool TreeBillboardsApp::Initialize()
+//bool BlurApp::Initialize()
 //{
 //	if (!D3DApp::Initialize())
 //		return false;
@@ -195,18 +197,21 @@
 //
 //	// Get the increment size of a descriptor in this heap type.  This is hardware specific, 
 //	// so we have to query this information.
-//	mCbvSrvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+//	mCbvSrvUavDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 //
 //	mWaves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
 //
+//	mBlurFilter = std::make_unique<BlurFilter>(md3dDevice.Get(),
+//		mClientWidth, mClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM);
+//
 //	LoadTextures();
 //	BuildRootSignature();
+//	BuildPostProcessRootSignature();
 //	BuildDescriptorHeaps();
-//	BuildShadersAndInputLayouts();
+//	BuildShadersAndInputLayout();
 //	BuildLandGeometry();
 //	BuildWavesGeometry();
 //	BuildBoxGeometry();
-//	BuildTreeSpritesGeometry();
 //	BuildMaterials();
 //	BuildRenderItems();
 //	BuildFrameResources();
@@ -223,16 +228,23 @@
 //	return true;
 //}
 //
-//void TreeBillboardsApp::OnResize()
+///* The texture we render the scene to has the same resolution as the window client area. Therefore, we need to rebuild the
+//off-screen texture, as well as the second texture buffer B used in the blur algorithm */
+//void BlurApp::OnResize()
 //{
 //	D3DApp::OnResize();
 //
 //	// The window resized, so update the aspect ratio and recompute the projection matrix.
 //	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
 //	XMStoreFloat4x4(&mProj, P);
+//
+//	if (mBlurFilter != nullptr)
+//	{
+//		mBlurFilter->OnResize(mClientWidth, mClientHeight);
+//	}
 //}
 //
-//void TreeBillboardsApp::Update(const GameTimer& gt)
+//void BlurApp::Update(const GameTimer& gt)
 //{
 //	OnKeyboardInput(gt);
 //	UpdateCamera(gt);
@@ -258,7 +270,7 @@
 //	UpdateWaves(gt);
 //}
 //
-//void TreeBillboardsApp::Draw(const GameTimer& gt)
+//void BlurApp::Draw(const GameTimer& gt)
 //{
 //	auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
 //
@@ -284,7 +296,7 @@
 //	// Specify the buffers we are going to render to.
 //	mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
 //
-//	ID3D12DescriptorHeap* descriptorHeaps[] = { mSrvDescriptorHeap.Get() };
+//	ID3D12DescriptorHeap* descriptorHeaps[] = { mCbvSrvUavDescriptorHeap.Get() };
 //	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 //
 //	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
@@ -297,15 +309,21 @@
 //	mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
 //	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::AlphaTested]);
 //
-//	mCommandList->SetPipelineState(mPSOs["treeSprites"].Get());
-//	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::AlphaTestedTreeSprites]);
-//
 //	mCommandList->SetPipelineState(mPSOs["transparent"].Get());
 //	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Transparent]);
 //
-//	// Indicate a state transition on the resource usage.
+//	mBlurFilter->Execute(mCommandList.Get(), mPostProcessRootSignature.Get(),
+//		mPSOs["horzBlur"].Get(), mPSOs["vertBlur"].Get(), CurrentBackBuffer(), 4);
+//
+//	// Prepare to copy blurred output to the back buffer.
 //	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-//		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+//		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST));
+//
+//	mCommandList->CopyResource(CurrentBackBuffer(), mBlurFilter->Output());
+//
+//	// Transition to PRESENT state.
+//	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+//		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT));
 //
 //	// Done recording commands.
 //	ThrowIfFailed(mCommandList->Close());
@@ -327,7 +345,7 @@
 //	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
 //}
 //
-//void TreeBillboardsApp::OnMouseDown(WPARAM btnState, int x, int y)
+//void BlurApp::OnMouseDown(WPARAM btnState, int x, int y)
 //{
 //	mLastMousePos.x = x;
 //	mLastMousePos.y = y;
@@ -335,12 +353,12 @@
 //	SetCapture(mhMainWnd);
 //}
 //
-//void TreeBillboardsApp::OnMouseUp(WPARAM btnState, int x, int y)
+//void BlurApp::OnMouseUp(WPARAM btnState, int x, int y)
 //{
 //	ReleaseCapture();
 //}
 //
-//void TreeBillboardsApp::OnMouseMove(WPARAM btnState, int x, int y)
+//void BlurApp::OnMouseMove(WPARAM btnState, int x, int y)
 //{
 //	if ((btnState & MK_LBUTTON) != 0)
 //	{
@@ -372,11 +390,11 @@
 //	mLastMousePos.y = y;
 //}
 //
-//void TreeBillboardsApp::OnKeyboardInput(const GameTimer& gt)
+//void BlurApp::OnKeyboardInput(const GameTimer& gt)
 //{
 //}
 //
-//void TreeBillboardsApp::UpdateCamera(const GameTimer& gt)
+//void BlurApp::UpdateCamera(const GameTimer& gt)
 //{
 //	// Convert Spherical to Cartesian coordinates.
 //	mEyePos.x = mRadius * sinf(mPhi) * cosf(mTheta);
@@ -392,7 +410,7 @@
 //	XMStoreFloat4x4(&mView, view);
 //}
 //
-//void TreeBillboardsApp::AnimateMaterials(const GameTimer& gt)
+//void BlurApp::AnimateMaterials(const GameTimer& gt)
 //{
 //	// Scroll the water material texture coordinates.
 //	auto waterMat = mMaterials["water"].get();
@@ -416,7 +434,7 @@
 //	waterMat->NumFramesDirty = gNumFrameResources;
 //}
 //
-//void TreeBillboardsApp::UpdateObjectCBs(const GameTimer& gt)
+//void BlurApp::UpdateObjectCBs(const GameTimer& gt)
 //{
 //	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 //	for (auto& e : mAllRitems)
@@ -440,7 +458,7 @@
 //	}
 //}
 //
-//void TreeBillboardsApp::UpdateMaterialCBs(const GameTimer& gt)
+//void BlurApp::UpdateMaterialCBs(const GameTimer& gt)
 //{
 //	auto currMaterialCB = mCurrFrameResource->MaterialCB.get();
 //	for (auto& e : mMaterials)
@@ -466,7 +484,7 @@
 //	}
 //}
 //
-//void TreeBillboardsApp::UpdateMainPassCB(const GameTimer& gt)
+//void BlurApp::UpdateMainPassCB(const GameTimer& gt)
 //{
 //	XMMATRIX view = XMLoadFloat4x4(&mView);
 //	XMMATRIX proj = XMLoadFloat4x4(&mProj);
@@ -501,7 +519,7 @@
 //	currPassCB->CopyData(0, mMainPassCB);
 //}
 //
-//void TreeBillboardsApp::UpdateWaves(const GameTimer& gt)
+//void BlurApp::UpdateWaves(const GameTimer& gt)
 //{
 //	// Every quarter second, generate a random wave.
 //	static float t_base = 0.0f;
@@ -541,7 +559,7 @@
 //	mWavesRitem->Geo->VertexBufferGPU = currWavesVB->Resource();
 //}
 //
-//void TreeBillboardsApp::LoadTextures()
+//void BlurApp::LoadTextures()
 //{
 //	auto grassTex = std::make_unique<Texture>();
 //	grassTex->Name = "grassTex";
@@ -564,20 +582,12 @@
 //		mCommandList.Get(), fenceTex->Filename.c_str(),
 //		fenceTex->Resource, fenceTex->UploadHeap));
 //
-//	auto treeArrayTex = std::make_unique<Texture>();
-//	treeArrayTex->Name = "treeArrayTex";
-//	treeArrayTex->Filename = L"Textures/treeArray2.dds";
-//	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-//		mCommandList.Get(), treeArrayTex->Filename.c_str(),
-//		treeArrayTex->Resource, treeArrayTex->UploadHeap));
-//
 //	mTextures[grassTex->Name] = std::move(grassTex);
 //	mTextures[waterTex->Name] = std::move(waterTex);
 //	mTextures[fenceTex->Name] = std::move(fenceTex);
-//	mTextures[treeArrayTex->Name] = std::move(treeArrayTex);
 //}
 //
-//void TreeBillboardsApp::BuildRootSignature()
+//void BlurApp::BuildRootSignature()
 //{
 //	CD3DX12_DESCRIPTOR_RANGE texTable;
 //	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
@@ -617,26 +627,69 @@
 //		IID_PPV_ARGS(mRootSignature.GetAddressOf())));
 //}
 //
-//void TreeBillboardsApp::BuildDescriptorHeaps()
+//void BlurApp::BuildPostProcessRootSignature()
 //{
+//	CD3DX12_DESCRIPTOR_RANGE srvTable;
+//	srvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+//
+//	CD3DX12_DESCRIPTOR_RANGE uavTable;
+//	uavTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+//
+//	// Root parameter can be a table, root descriptor or root constants.
+//	CD3DX12_ROOT_PARAMETER slotRootParameter[3];
+//
+//	// Perfomance TIP: Order from most frequent to least frequent.
+//	slotRootParameter[0].InitAsConstants(12, 0);
+//	slotRootParameter[1].InitAsDescriptorTable(1, &srvTable);
+//	slotRootParameter[2].InitAsDescriptorTable(1, &uavTable);
+//
+//	// A root signature is an array of root parameters.
+//	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3, slotRootParameter,
+//		0, nullptr,
+//		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+//
+//	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
+//	ComPtr<ID3DBlob> serializedRootSig = nullptr;
+//	ComPtr<ID3DBlob> errorBlob = nullptr;
+//	HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+//		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+//
+//	if (errorBlob != nullptr)
+//	{
+//		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+//	}
+//	ThrowIfFailed(hr);
+//
+//	ThrowIfFailed(md3dDevice->CreateRootSignature(
+//		0,
+//		serializedRootSig->GetBufferPointer(),
+//		serializedRootSig->GetBufferSize(),
+//		IID_PPV_ARGS(mPostProcessRootSignature.GetAddressOf())));
+//}
+//
+//void BlurApp::BuildDescriptorHeaps()
+//{
+//	const int textureDescriptorCount = 3;
+//	const int blurDescriptorCount = 4;
+//
 //	//
 //	// Create the SRV heap.
 //	//
 //	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-//	srvHeapDesc.NumDescriptors = 4;
+//	srvHeapDesc.NumDescriptors = textureDescriptorCount +
+//		blurDescriptorCount;
 //	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 //	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-//	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
+//	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mCbvSrvUavDescriptorHeap)));
 //
 //	//
-//	// Fill out the heap with actual descriptors.
+//	// Fill out the heap with texture descriptors.
 //	//
-//	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+//	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mCbvSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 //
 //	auto grassTex = mTextures["grassTex"]->Resource;
 //	auto waterTex = mTextures["waterTex"]->Resource;
 //	auto fenceTex = mTextures["fenceTex"]->Resource;
-//	auto treeArrayTex = mTextures["treeArrayTex"]->Resource;
 //
 //	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 //	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -647,31 +700,28 @@
 //	md3dDevice->CreateShaderResourceView(grassTex.Get(), &srvDesc, hDescriptor);
 //
 //	// next descriptor
-//	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
+//	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 //
 //	srvDesc.Format = waterTex->GetDesc().Format;
 //	md3dDevice->CreateShaderResourceView(waterTex.Get(), &srvDesc, hDescriptor);
 //
 //	// next descriptor
-//	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
+//	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 //
 //	srvDesc.Format = fenceTex->GetDesc().Format;
 //	md3dDevice->CreateShaderResourceView(fenceTex.Get(), &srvDesc, hDescriptor);
 //
-//	// next descriptor
-//	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
+//	//
+//	// Fill out the heap with the descriptors to the BlurFilter resources.
+//	//
 //
-//	auto desc = treeArrayTex->GetDesc();
-//	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-//	srvDesc.Format = treeArrayTex->GetDesc().Format;
-//	srvDesc.Texture2DArray.MostDetailedMip = 0;
-//	srvDesc.Texture2DArray.MipLevels = -1;
-//	srvDesc.Texture2DArray.FirstArraySlice = 0;
-//	srvDesc.Texture2DArray.ArraySize = treeArrayTex->GetDesc().DepthOrArraySize;
-//	md3dDevice->CreateShaderResourceView(treeArrayTex.Get(), &srvDesc, hDescriptor);
+//	mBlurFilter->BuildDescriptors(
+//		CD3DX12_CPU_DESCRIPTOR_HANDLE(mCbvSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 3, mCbvSrvUavDescriptorSize),
+//		CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), 3, mCbvSrvUavDescriptorSize),
+//		mCbvSrvUavDescriptorSize);
 //}
 //
-//void TreeBillboardsApp::BuildShadersAndInputLayouts()
+//void BlurApp::BuildShadersAndInputLayout()
 //{
 //	const D3D_SHADER_MACRO defines[] =
 //	{
@@ -689,26 +739,18 @@
 //	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_0");
 //	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS", "ps_5_0");
 //	mShaders["alphaTestedPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_0");
+//	mShaders["horzBlurCS"] = d3dUtil::CompileShader(L"Shaders\\Blur.hlsl", nullptr, "HorzBlurCS", "cs_5_0");
+//	mShaders["vertBlurCS"] = d3dUtil::CompileShader(L"Shaders\\Blur.hlsl", nullptr, "VertBlurCS", "cs_5_0");
 //
-//	mShaders["treeSpriteVS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "VS", "vs_5_0");
-//	mShaders["treeSpriteGS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "GS", "gs_5_0");
-//	mShaders["treeSpritePS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", alphaTestDefines, "PS", "ps_5_0");
-//
-//	mStdInputLayout =
+//	mInputLayout =
 //	{
 //		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 //		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 //		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 //	};
-//
-//	mTreeSpriteInputLayout =
-//	{
-//		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-//		{ "SIZE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-//	};
 //}
 //
-//void TreeBillboardsApp::BuildLandGeometry()
+//void BlurApp::BuildLandGeometry()
 //{
 //	GeometryGenerator geoGen;
 //	GeometryGenerator::MeshData grid = geoGen.CreateGrid(160.0f, 160.0f, 50, 50);
@@ -764,7 +806,7 @@
 //	mGeometries["landGeo"] = std::move(geo);
 //}
 //
-//void TreeBillboardsApp::BuildWavesGeometry()
+//void BlurApp::BuildWavesGeometry()
 //{
 //	std::vector<std::uint16_t> indices(3 * mWaves->TriangleCount()); // 3 indices per face
 //	assert(mWaves->VertexCount() < 0x0000ffff);
@@ -820,7 +862,7 @@
 //	mGeometries["waterGeo"] = std::move(geo);
 //}
 //
-//void TreeBillboardsApp::BuildBoxGeometry()
+//void BlurApp::BuildBoxGeometry()
 //{
 //	GeometryGenerator geoGen;
 //	GeometryGenerator::MeshData box = geoGen.CreateBox(8.0f, 8.0f, 8.0f, 3);
@@ -869,69 +911,7 @@
 //	mGeometries["boxGeo"] = std::move(geo);
 //}
 //
-//void TreeBillboardsApp::BuildTreeSpritesGeometry()
-//{
-//	struct TreeSpriteVertex
-//	{
-//		XMFLOAT3 Pos;
-//		XMFLOAT2 Size;
-//	};
-//
-//	static const int treeCount = 16;
-//	std::array<TreeSpriteVertex, 16> vertices;
-//	for (UINT i = 0; i < treeCount; ++i)
-//	{
-//		float x = MathHelper::RandF(-45.0f, 45.0f);
-//		float z = MathHelper::RandF(-45.0f, 45.0f);
-//		float y = GetHillsHeight(x, z);
-//
-//		// Move tree slightly above land height.
-//		y += 8.0f;
-//
-//		vertices[i].Pos = XMFLOAT3(x, y, z);
-//		vertices[i].Size = XMFLOAT2(20.0f, 20.0f);
-//	}
-//
-//	std::array<std::uint16_t, 16> indices =
-//	{
-//		0, 1, 2, 3, 4, 5, 6, 7,
-//		8, 9, 10, 11, 12, 13, 14, 15
-//	};
-//
-//	const UINT vbByteSize = (UINT)vertices.size() * sizeof(TreeSpriteVertex);
-//	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
-//
-//	auto geo = std::make_unique<MeshGeometry>();
-//	geo->Name = "treeSpritesGeo";
-//
-//	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
-//	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
-//
-//	ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
-//	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
-//
-//	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-//		mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
-//
-//	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-//		mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
-//
-//	geo->VertexByteStride = sizeof(TreeSpriteVertex);
-//	geo->VertexBufferByteSize = vbByteSize;
-//	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
-//	geo->IndexBufferByteSize = ibByteSize;
-//
-//	SubmeshGeometry submesh;
-//	submesh.IndexCount = (UINT)indices.size();
-//	submesh.StartIndexLocation = 0;
-//	submesh.BaseVertexLocation = 0;
-//
-//	geo->DrawArgs["points"] = submesh;
-//
-//	mGeometries["treeSpritesGeo"] = std::move(geo);
-//}
-//
-//void TreeBillboardsApp::BuildPSOs()
+//void BlurApp::BuildPSOs()
 //{
 //	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 //
@@ -939,7 +919,7 @@
 //	// PSO for opaque objects.
 //	//
 //	ZeroMemory(&opaquePsoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-//	opaquePsoDesc.InputLayout = { mStdInputLayout.data(), (UINT)mStdInputLayout.size() };
+//	opaquePsoDesc.InputLayout = { mInputLayout.data(), (UINT)mInputLayout.size() };
 //	opaquePsoDesc.pRootSignature = mRootSignature.Get();
 //	opaquePsoDesc.VS =
 //	{
@@ -998,32 +978,33 @@
 //	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&alphaTestedPsoDesc, IID_PPV_ARGS(&mPSOs["alphaTested"])));
 //
 //	//
-//	// PSO for tree sprites
+//	// PSO for horizontal blur
 //	//
-//	D3D12_GRAPHICS_PIPELINE_STATE_DESC treeSpritePsoDesc = opaquePsoDesc;
-//	treeSpritePsoDesc.VS =
+//	D3D12_COMPUTE_PIPELINE_STATE_DESC horzBlurPSO = {};
+//	horzBlurPSO.pRootSignature = mPostProcessRootSignature.Get();
+//	horzBlurPSO.CS =
 //	{
-//		reinterpret_cast<BYTE*>(mShaders["treeSpriteVS"]->GetBufferPointer()),
-//		mShaders["treeSpriteVS"]->GetBufferSize()
+//		reinterpret_cast<BYTE*>(mShaders["horzBlurCS"]->GetBufferPointer()),
+//		mShaders["horzBlurCS"]->GetBufferSize()
 //	};
-//	treeSpritePsoDesc.GS =
-//	{
-//		reinterpret_cast<BYTE*>(mShaders["treeSpriteGS"]->GetBufferPointer()),
-//		mShaders["treeSpriteGS"]->GetBufferSize()
-//	};
-//	treeSpritePsoDesc.PS =
-//	{
-//		reinterpret_cast<BYTE*>(mShaders["treeSpritePS"]->GetBufferPointer()),
-//		mShaders["treeSpritePS"]->GetBufferSize()
-//	};
-//	treeSpritePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-//	treeSpritePsoDesc.InputLayout = { mTreeSpriteInputLayout.data(), (UINT)mTreeSpriteInputLayout.size() };
-//	treeSpritePsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+//	horzBlurPSO.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+//	ThrowIfFailed(md3dDevice->CreateComputePipelineState(&horzBlurPSO, IID_PPV_ARGS(&mPSOs["horzBlur"])));
 //
-//	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&treeSpritePsoDesc, IID_PPV_ARGS(&mPSOs["treeSprites"])));
+//	//
+//	// PSO for vertical blur
+//	//
+//	D3D12_COMPUTE_PIPELINE_STATE_DESC vertBlurPSO = {};
+//	vertBlurPSO.pRootSignature = mPostProcessRootSignature.Get();
+//	vertBlurPSO.CS =
+//	{
+//		reinterpret_cast<BYTE*>(mShaders["vertBlurCS"]->GetBufferPointer()),
+//		mShaders["vertBlurCS"]->GetBufferSize()
+//	};
+//	vertBlurPSO.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+//	ThrowIfFailed(md3dDevice->CreateComputePipelineState(&vertBlurPSO, IID_PPV_ARGS(&mPSOs["vertBlur"])));
 //}
 //
-//void TreeBillboardsApp::BuildFrameResources()
+//void BlurApp::BuildFrameResources()
 //{
 //	for (int i = 0; i < gNumFrameResources; ++i)
 //	{
@@ -1032,7 +1013,7 @@
 //	}
 //}
 //
-//void TreeBillboardsApp::BuildMaterials()
+//void BlurApp::BuildMaterials()
 //{
 //	auto grass = std::make_unique<Material>();
 //	grass->Name = "grass";
@@ -1040,7 +1021,7 @@
 //	grass->DiffuseSrvHeapIndex = 0;
 //	grass->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 //	grass->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
-//	grass->Roughness = 0.125f;
+//	grass->Roughness = .125f;
 //
 //	// This is not a good water material definition, but we do not have all the rendering
 //	// tools we need (transparency, environment reflection), so we fake it for now.
@@ -1058,23 +1039,14 @@
 //	wirefence->DiffuseSrvHeapIndex = 2;
 //	wirefence->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 //	wirefence->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
-//	wirefence->Roughness = 0.25f;
-//
-//	auto treeSprites = std::make_unique<Material>();
-//	treeSprites->Name = "treeSprites";
-//	treeSprites->MatCBIndex = 3;
-//	treeSprites->DiffuseSrvHeapIndex = 3;
-//	treeSprites->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-//	treeSprites->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
-//	treeSprites->Roughness = 0.125f;
+//	wirefence->Roughness = 0.2f;
 //
 //	mMaterials["grass"] = std::move(grass);
 //	mMaterials["water"] = std::move(water);
 //	mMaterials["wirefence"] = std::move(wirefence);
-//	mMaterials["treeSprites"] = std::move(treeSprites);
 //}
 //
-//void TreeBillboardsApp::BuildRenderItems()
+//void BlurApp::BuildRenderItems()
 //{
 //	auto wavesRitem = std::make_unique<RenderItem>();
 //	wavesRitem->World = MathHelper::Identity4x4();
@@ -1116,25 +1088,12 @@
 //
 //	mRitemLayer[(int)RenderLayer::AlphaTested].push_back(boxRitem.get());
 //
-//	auto treeSpritesRitem = std::make_unique<RenderItem>();
-//	treeSpritesRitem->World = MathHelper::Identity4x4();
-//	treeSpritesRitem->ObjCBIndex = 3;
-//	treeSpritesRitem->Mat = mMaterials["treeSprites"].get();
-//	treeSpritesRitem->Geo = mGeometries["treeSpritesGeo"].get();
-//	treeSpritesRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
-//	treeSpritesRitem->IndexCount = treeSpritesRitem->Geo->DrawArgs["points"].IndexCount;
-//	treeSpritesRitem->StartIndexLocation = treeSpritesRitem->Geo->DrawArgs["points"].StartIndexLocation;
-//	treeSpritesRitem->BaseVertexLocation = treeSpritesRitem->Geo->DrawArgs["points"].BaseVertexLocation;
-//
-//	mRitemLayer[(int)RenderLayer::AlphaTestedTreeSprites].push_back(treeSpritesRitem.get());
-//
 //	mAllRitems.push_back(std::move(wavesRitem));
 //	mAllRitems.push_back(std::move(gridRitem));
 //	mAllRitems.push_back(std::move(boxRitem));
-//	mAllRitems.push_back(std::move(treeSpritesRitem));
 //}
 //
-//void TreeBillboardsApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
+//void BlurApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 //{
 //	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 //	UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
@@ -1151,8 +1110,8 @@
 //		cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
 //		cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 //
-//		CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-//		tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvDescriptorSize);
+//		CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mCbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+//		tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvUavDescriptorSize);
 //
 //		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex * objCBByteSize;
 //		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress() + ri->Mat->MatCBIndex * matCBByteSize;
@@ -1165,7 +1124,7 @@
 //	}
 //}
 //
-//std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> TreeBillboardsApp::GetStaticSamplers()
+//std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> BlurApp::GetStaticSamplers()
 //{
 //	// Applications usually only need a handful of samplers.  So just define them all up front
 //	// and keep them available as part of the root signature.  
@@ -1222,12 +1181,12 @@
 //		anisotropicWrap, anisotropicClamp };
 //}
 //
-//float TreeBillboardsApp::GetHillsHeight(float x, float z)const
+//float BlurApp::GetHillsHeight(float x, float z)const
 //{
 //	return 0.3f * (z * sinf(0.1f * x) + x * cosf(0.1f * z));
 //}
 //
-//XMFLOAT3 TreeBillboardsApp::GetHillsNormal(float x, float z)const
+//XMFLOAT3 BlurApp::GetHillsNormal(float x, float z)const
 //{
 //	// n = (-df/dx, 1, -df/dz)
 //	XMFLOAT3 n(

@@ -21,6 +21,7 @@
 #include "LightingUtils.hlsl"
 
 Texture2D gDiffuseMap : register(t0);
+Texture2D gDisplacementMap : register(t1); // Chapter 13 WavesCS demo
 
 //SamplerState gsamLinear : register(s0); // For Crate demo (Chapter 9)
 
@@ -36,6 +37,11 @@ cbuffer cbPerObject : register(b0)
 {
     float4x4 gWorld;
     float4x4 gTexTransform; // Chapter 9 texturing demo
+    
+    // Chapter 13 WavesCS demo
+    float2 gDisplacementMapTexelSize;
+    float gGridSpatialStep;
+    float cbPerObjectPad1;
 };
 
 // Constant data that varies per material.
@@ -48,7 +54,8 @@ cbuffer cbPass : register(b1)
     float4x4 gViewProj;
     float4x4 gInvViewProj;
     float3 gEyePosW;
-    float cbPerObjectPad1;
+    //float cbPerObjectPad1;
+    float cbPerPassPad1; // Chapter 13 WavesCS demo
     float2 gRenderTargetSize;
     float2 gInvRenderTargetSize;
     float gNearZ;
@@ -62,7 +69,8 @@ cbuffer cbPass : register(b1)
     float4 gFogColor;
     float gFogStart;
     float gFogRange;
-    float2 cbPerObjectPad2;
+    //float2 cbPerObjectPad2;
+    float2 cbPerPassPad2; // Chapter 13 WavesCS demo
 
     // Indices [0, NUM_DIR_LIGHTS) are directional lights;
     // indices [NUM_DIR_LIGHTS, NUM_DIR_LIGHTS+NUM_POINT_LIGHTS) are point lights;
@@ -97,6 +105,21 @@ struct VertexOut
 VertexOut VS(VertexIn vin)
 {
     VertexOut vout = (VertexOut) 0.0f;
+    
+#ifdef DISPLACEMENT_MAP
+	// Sample the displacement map using non-transformed [0,1]^2 tex-coords.
+	vin.PosL.y += gDisplacementMap.SampleLevel(gsamLinearWrap, vin.TexC, 1.0f).r;
+	
+	// Estimate normal using finite difference.
+	float du = gDisplacementMapTexelSize.x;
+	float dv = gDisplacementMapTexelSize.y;
+	float l = gDisplacementMap.SampleLevel( gsamPointClamp, vin.TexC-float2(du, 0.0f), 0.0f ).r;
+	float r = gDisplacementMap.SampleLevel( gsamPointClamp, vin.TexC+float2(du, 0.0f), 0.0f ).r;
+	float t = gDisplacementMap.SampleLevel( gsamPointClamp, vin.TexC-float2(0.0f, dv), 0.0f ).r;
+	float b = gDisplacementMap.SampleLevel( gsamPointClamp, vin.TexC+float2(0.0f, dv), 0.0f ).r;
+	vin.NormalL = normalize( float3(-r+l, 2.0f*gGridSpatialStep, b-t) );
+	
+#endif
 	
     // Transform to world space.
     float4 posW = mul(float4(vin.PosL, 1.0f), gWorld);
