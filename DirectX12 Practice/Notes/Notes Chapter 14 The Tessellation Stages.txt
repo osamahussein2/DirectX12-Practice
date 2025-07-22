@@ -1,0 +1,213 @@
+The tessellation stages refer to three stages in the rendering pipeline involved in tessellating geometry. Simply put,
+tessellation refers to subdividing geometry into smaller triangles and then offsetting the newly generated vertices in some
+way. The motivation to increase the triangle count is to add detail to the mesh.
+
+Below are three reasons for tessellation:
+
+1. Dynamic LOD on the GPU. We can dynamically adjust the detail of a mesh based on its distance from the camera and other
+factors. For example, if a mesh is very far away, it would be wasteful to render a high-poly version of it, as we would not be
+able to see all that detail anyway. As the object gets closer to the camera, we can continuously increase tessellation to
+increase the detail of the object.
+
+2. Physics and animation efficiency. We can perform physics and animation calculations on the low-poly mesh, and then
+tessellate to the higher polygon version. This saves computation power by performing the physics and animation calculations at
+a lower frequency.
+
+3. Memory savings. We can store lower polygon meshes in memory (on disk, RAM, and VRAM), and then have the GPU tessellate to
+the higher polygon version on the fly.
+
+The tessellation stages sit between the vertex shader and geometry shader.
+
+When we render for tessellation, we do not submit triangles to the IA stage. Instead, we submit patches with a number of
+control points. Direct3D supports patches with 1-32 control points, and these are described by the following primitive types:
+
+D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST = 33,
+D3D_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST = 34,
+D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST = 35,
+D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST = 36
+
+A triangle can be thought of a triangle patch with three control points (D3D_PRIMITIVE_3_CONTROL_POINT_PATCH), so you can still
+submit your usual triangle meshes to be tessellated. A simple quad patch can be submitted with four control points 
+(D3D_PRIMITIVE_4_CONTROL_POINT_PATCH). These patches are eventually tessellated into triangles by the tessellation stages.
+
+When passing control point primitive types to ID3D12GraphicsCommandList::IASetPrimitiveTopology, you need to set the
+D3D12_GRAPHICS_PIPELINE_STATE_DESC::PrimitiveTopologyType field to D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH:
+
+opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_ PATCH;
+
+The idea of control points comes from the construction of certain kinds of mathematical curves and surfaces.
+
+So the motivation for all these control type primitives is to provide support for these kinds of curved surfaces.
+
+Because we submit patch control points to the rendering pipeline, the control points are what get pumped through the vertex
+shader. Thus, when tessellation is enabled, the vertex shader is really a "vertex shader for control points," and we can do
+any control point work we need before tessellation starts. Typically, animation or physics calculations are done in the vertex
+shader at the lower frequency before the geometry is tessellated.
+
+This constant hull shader is evaluated per patch, and is tasked with outputting the so-called tessellation factors of the mesh.
+The tessellation factors instruct the tessellation stage how much to tessellate the patch.
+
+The constant hull shader inputs all the control points of the patch, which is defined by the type InputPatch<VertexOut, 4>.
+Recall that the control points are first pumped through the vertex shader, so their type is determined by the output type of
+the vertex shader VertexOut.
+
+The constant hull shader must output the tessellation factors; the tessellation factors depend on the topology of the patch.
+
+Besides the tessellation factors (SV_TessFactor and SV_InsideTessFactor), you can output other patch information from the
+constant hull shader. The domain shader receives the output from the constant hull shader as input, and could make use of this
+extra patch information.
+
+Tessellating a quad patch consists of two parts:
+
+1. Four edge tessellation factors control how much to tessellate along each edge.
+
+2. Two interior tessellation factors indicate how to tessellate the quad patch (one tessellation factor for the horizontal
+dimension of the quad, and one tessellation factor for the vertical dimension of the quad).
+
+Tessellating a triangle patch also consists of two parts:
+
+1. Three edge tessellation factors control how much to tessellate along each edge.
+
+2. One interior tessellation factor indicates how much to tessellate the triangle patch.
+
+The maximum tessellation factor supported by Direct3D 11 hardware is 64. If all the tessellation factors are zero, the patch is
+rejected from further processing. This allows us to implement optimizations such as frustum culling and backface culling on a
+per patch basis.
+
+1. If a patch is not visible by the frustum, then we can reject the patch from further processing (if we did tessellate it, the
+tessellated triangles would be rejected during triangle clipping).
+
+2. If a patch is backfacing, then we can reject the patch from further processing (if we did tessellate it, the tessellated
+triangles would be rejected in the backface culling part of rasterization).
+
+The following are some common metrics used to determine the amount to tessellate:
+
+1. Distance from the camera: The further an object is from the eye, the less we will notice fine details; therefore, we can
+render a low-poly version of the object when it is far away, and tessellate more as it gets closer to the eye.
+
+2. Screen area coverage: We can estimate the number of pixels an object covers on the screen. If this number is small, then we
+can render a low-poly version of the object. As its screen area coverage increases, we can tessellate more.
+
+3. Orientation: The orientation of the triangle with respect to the eye is taken into consideration with the idea that
+triangles along silhouette edges will be more refined than other triangles.
+
+4. Roughness: Rough surfaces with lots of details will need more tessellation than smooth surfaces. A roughness value can be
+precomputed by examining the surface textures, which can be used to decide how much to tessellate.
+
+[Story10] gives the following performance advice:
+
+1. If the tessellation factors are 1 (which basically means we are not really tessellating), consider rendering the patch
+without tessellation, as we will be wasting GPU overhead going through the tessellation stages when they are not doing anything.
+
+2. For performance reasons related to GPU implementations, do not tessellate such that the triangles are so small they cover
+less than eight pixels.
+
+3. Batch draw calls that use tessellation (i.e., turning tessellation on and off between draw calls is expensive).
+
+The control point hull shader inputs a number of control points and outputs a number of control points. The control point hull
+shader is invoked once per control point output. One application of the hull shader is to change surface representations, say
+from an ordinary triangle (submitted to the pipeline with three control points) to a cubic Bézier triangle patch (a patch with
+ten control points).
+
+For example, suppose your mesh is modeled as usual by triangles (three control points); you can use the hull shader to augment
+the triangle to a higher order cubic Bézier triangle patch with 10 control points, then detail can be added with the additional
+control points and the triangle patch tessellated to the desired amount. This strategy is the so-called N-patches scheme or PN
+triangles scheme; it is convenient because it uses tessellation to improve existing triangle meshes with no modification
+to the art pipeline.
+
+Drivers can detect and optimize pass-through shaders.
+
+The hull shader inputs all of the control points of the patch via the InputPatch parameter. The system value
+SV_OutputControlPointID gives an index identifying the output control point the hull shader is working on. Note that the input
+patch control point count does not need to match the output control point count; for example, the input patch could have 4
+control points and the output patch could have sixteen control points; the additional control points could be derived from the
+four input control points.
+
+The control point hull shader introduces a number of attributes:
+
+1. domain: The patch type. Valid arguments are tri, quad, or isoline.
+
+2. partitioning: Specifies the subdivision mode of the tessellation.
+
+a. integer: New vertices are added/removed only at integer tessellation factor values. The fractional part of a tessellation
+factor is ignored. This creates a noticeable "popping" when a mesh changes its tessellation level.
+
+b. Fractional tessellation (fractional_even/fractional_odd): New vertices are added/removed at integer tessellation factor
+values, but "slide" in gradually based on the fractional part of the tessellation factor. This is useful when you want to
+smoothly transition from a coarser version of the mesh to a finer version through tessellation, rather than abruptly at integer
+steps.
+
+3. outputtopology: The winding order of the triangles created via subdivision.
+
+a. triangle_cw: clockwise winding order.
+b. triangle_ccw: counterclockwise winding order.
+c. line: For line tessellation.
+
+4. outputcontrolpoints: The number of times the hull shader executes, outputting one control point each time. The system value
+SV_OutputControlPointID gives an index identifying the output control point the hull shader is working on.
+
+5. patchconstantfunc: A string specifying the constant hull shader function name.
+
+6. maxtessfactor: A hint to the driver specifying the maximum tessellation factor your shader uses. This can potentially enable
+optimizations by the hardware if it knows this upper bound, as it will know how much resources are needed for the tessellation.
+The maximum tessellation factor supported by Direct3D 11 hardware is 64.
+
+As programmers, we do not have control of the tessellation stage. This stage is all done by the hardware, and tessellates the
+patches based on the tessellation factors output from the constant hull shader program.
+
+The tessellation stage outputs all of our newly created vertices and triangles. The domain shader is invoked for each vertex
+created by the tessellation stage. With tessellation enabled, whereas the vertex shader acts as a vertex shader for each
+control point, the hull shader is essentially the vertex shader for the tessellated patch. In particular, it is here that we
+project the vertices of the tessellated patch to homogeneous clip space.
+
+For a quad patch, the domain shader inputs the tessellation factors (and any other per patch information you output from the
+constant hull shader), the parametric (u, v) coordinates of the tessellated vertex positions, and all the patch control points
+output from the control point hull shader.
+
+Note that the domain shader does not give you the actual tessellated vertex positions; instead it gives you the parametric
+(u, v) coordinates of these points in the patch domain space. It is up to you to use these parametric coordinates and the
+control points to derive the actual 3D vertex positions.
+
+The domain shader for a triangle patch is similar, except that instead of the parametric (u, v) values being input, the float3
+barycentric (u, v, w) coordinates of the vertex are input for an explanation of barycentric coordinates. The reason for
+outputting barycentric coordinates for triangle patches is probably due to the fact that Bezier triangle patches are defined
+in terms of barycentric coordinates.
+
+Simply tessellating is not enough to add detail, as the new triangles just lie on the patch that was subdivided. We must offset
+those extra vertices in some way to better approximate the shape of the object we are modeling. This is done in the domain
+shader.
+
+Consider three noncollinear points p0, p1, and p2 which we will call the control points. These three control points define a
+Bezier curve in the following way. A point p(t) on the curve is first found by linearly interpolating between p0 and p1 by t,
+and p1 and p2 by t to get the intermediate points:
+
+p0  = (1 - t) * p0 + t * p1
+p1  = (1 - t) * p1 + t * p2
+
+Then p(t) is found by linearly interpolating between p0 and p1 by t:
+
+p(t) = (1 - t) * p0 + t * p1
+= (1 - t)((1 - t) * p0 + t * p1) + t((1 - t) * p1 + t * p2)
+= (1 - t)^2 * p0 + 2(1 - t) * t * p1 + t^2 * p2
+
+In other words, this construction by repeated interpolation leads to the parametric formula for a quadratic (degree 2) Bezier
+curve:
+
+p(t) = (1 - t)^2 * p0 + 2(1 - t) * t * p1 + t^2 * p2
+
+Generally, people stop at cubic curves, as they give enough smoothness and degrees of freedom for controlling the curve, but
+you can keep going to higher-order curves with the same recursive pattern of repeated interpolation. 
+
+It turns out, that the formula for Bezier curves of degree n can be written in terms of the Bernstein basis functions, which
+are defined by:
+
+Bi^n(t) = n! / i!(n - i)! * t^i * (1 - t)^n-i
+
+There is no restriction that the control points need to be equidistant to form a uniform grid.
+
+Hardware tessellation provides memory benefits, as a low-poly asset can be stored and then detail can be added on the fly via
+tessellation. Additionally, computations such as animation and physics can be done on the low-poly mesh frequency before
+tessellation. Finally, continuous LOD algorithms can now be implemented completely on the GPU, which always had to be
+implemented on the CPU before hardware tessellation was available.
+
+New primitive types are used only with tessellation to submit control points to the rendering pipeline.

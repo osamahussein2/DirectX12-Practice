@@ -153,7 +153,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="Notes Chapter 13 The Compute Shader.txt" />
+    <Text Include="Notes\Notes Chapter 13 The Compute Shader.txt" />
+    <Text Include="Notes\Notes Chapter 14 The Tessellation Stages.txt" />
     <Text Include="Notes\Notes Chapter 12 The Geometry Shader.txt" />
     <Text Include="Notes\Notes Chapter 11 Stenciling.txt" />
     <Text Include="Notes\Notes Chapter 10 Blending.txt" />
@@ -190,6 +191,8 @@
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="LitWaves-Chapter8.cpp" />
     <ClCompile Include="RenderTarget.cpp" />
+    <ClCompile Include="BasicTessellation-Chapter14.cpp" />
+    <ClCompile Include="BezierPatch-Chapter14.cpp" />
     <ClCompile Include="WavesCS-Chapter13.cpp" />
     <ClCompile Include="VecAdd-Chapter13.cpp" />
     <ClCompile Include="Shapes-Chapter7.cpp" />
@@ -219,6 +222,7 @@
     <ClInclude Include="Waves.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Shaders\BezierTessellation.hlsl" />
     <FxCompile Include="Shaders\Composite.hlsl" />
     <FxCompile Include="Shaders\Blur.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">HorzBlurCS</EntryPointName>
@@ -240,6 +244,7 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SobelCS</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
     </FxCompile>
+    <FxCompile Include="Shaders\Tessellation.hlsl" />
     <FxCompile Include="Shaders\TreeSprite.hlsl" />
     <FxCompile Include="Shaders\VecAdd.hlsl">
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">CS</EntryPointName>

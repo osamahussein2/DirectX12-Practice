@@ -49,6 +49,9 @@
     <Filter Include="Header Files\Chapter 13 header files">
       <UniqueIdentifier>{e12b8925-c973-4181-9171-cb197ae4f801}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Chapter 14 source files">
+      <UniqueIdentifier>{77c50727-6866-428a-a12b-d8806becb409}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoxApp.cpp">
@@ -144,6 +147,12 @@
     <ClCompile Include="WavesCS-Chapter13.cpp">
       <Filter>Source Files\Chapter 13 source files</Filter>
     </ClCompile>
+    <ClCompile Include="BasicTessellation-Chapter14.cpp">
+      <Filter>Source Files\Chapter 14 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="BezierPatch-Chapter14.cpp">
+      <Filter>Source Files\Chapter 14 source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\Notes Introduction to DirectX12.txt">
@@ -185,7 +194,10 @@
     <Text Include="Notes\Notes Chapter 12 The Geometry Shader.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="Notes Chapter 13 The Compute Shader.txt">
+    <Text Include="Notes\Notes Chapter 13 The Compute Shader.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Notes\Notes Chapter 14 The Tessellation Stages.txt">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>
@@ -268,6 +280,10 @@
       <Filter>Shader Files</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\VecAdd.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Tessellation.hlsl" />
+    <FxCompile Include="Shaders\BezierTessellation.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>
