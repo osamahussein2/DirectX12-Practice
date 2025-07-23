@@ -10,9 +10,30 @@ struct ObjectConstants
     DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4(); // Chapter 9 texturing demo
 
     // Chapter 13 SobelApp demo
-    DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f, 1.0f };
-    float GridSpatialStep = 1.0f;
-    float Pad;
+    //DirectX::XMFLOAT2 DisplacementMapTexelSize = { 1.0f, 1.0f };
+    //float GridSpatialStep = 1.0f;
+    //float Pad;
+
+    // Chapter 14 CameraAndDynamicIndexing demo
+    UINT MaterialIndex;
+    UINT ObjPad0;
+    UINT ObjPad1;
+    UINT ObjPad2;
+};
+
+// Chapter 14 CameraAndDynamicIndexing demo
+// The material structured buffer replaces our material constant buffer in the frame resources class
+struct MaterialData
+{
+    DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
+    DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
+    float Roughness = 64.0f;
+    // Used in texture mapping.
+    DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
+    UINT DiffuseMapIndex = 0;
+    UINT MaterialPad0;
+    UINT MaterialPad1;
+    UINT MaterialPad2;
 };
 
 struct PassConstants
@@ -87,6 +108,9 @@ public:
 
     // Chapter 8 demo (lighting)
     std::unique_ptr<UploadBuffer<MaterialConstants>> MaterialCB = nullptr;
+
+    // Chapter 14 CameraAndDynamicIndexing demo
+    std::unique_ptr<UploadBuffer<MaterialData>> MaterialBuffer = nullptr;
 
     // We cannot update a dynamic vertex buffer until the GPU is done processing
     // the commands that reference it.  So each frame needs their own.

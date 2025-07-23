@@ -1,0 +1,55 @@
+A new Direct3D 12 technique called dynamic indexing (new to shader model 5.1), where we can dynamically index an array of
+texture objects (Texture2D gDiffuseMap[n]). This is similar to how we indexed the special texture array object 
+(Texture2DArray) in Chapter 12, but unlike Texture2DArray the textures in this array can be different sizes and formats,
+making it more flexible than Texture2DArrays.
+
+View space is the coordinate system attached to the camera. The camera sits at the origin looking down the positive z-axis,
+the x-axis aims to the right of the camera, and the y-axis aims above the camera.
+
+The change of coordinate transformation from world space to view space is called the view transform, and the corresponding
+matrix is called the view matrix.
+
+Thus W^-1 transforms from world space to view space.
+
+The world coordinate system and view coordinate system generally differ by position and orientation only, so it makes
+intuitive sense that W = RT (i.e., the world matrix can be decomposed into a rotation followed by a translation). This form
+makes the inverse easier to compute:
+
+V = W^-1 = (RT)^-1 = T^-1(R)^-1 = T^-1(R^T)
+
+The dynamic index can be specified in various ways:
+
+1. The index can be an element in a constant buffer.
+2. The index can be a system ID like SV_PrimitiveID, SV_VertexID, SV_DispatchThreadID, or SV_InstanceID.
+3. The index can be the result of come calculation.
+4. The index can come from a texture.
+5. The index can come from a component of the vertex structure.
+
+Minimizing the number of descriptors we need to set will make our root signature smaller, which means less overhead per draw
+call; moreover, this technique of dynamic indexing will prove especially useful with instancing.
+
+Recall that a structured buffer is just an array of data of some type that can live in GPU memory and be accessed by shader
+programs. Because we still need to be able to update materials on the fly, we use an upload buffer rather than a default
+buffer.
+
+If you do not explicitly specify a space, it defaults to space0. A space just gives you another dimension to specify a
+shader register and is used to prevent resource overlap. For example, we can put multiple resources in register t0 if they
+are in different spaces:
+
+Texture2D gDiffuseMap : register(t0, space0);
+Texture2D gNormalMap : register(t0, space1);
+Texture2D gShadowMap : register(t0, space2);
+
+They are often used when there are arrays of resources. For example, the following 4 element texture array occupies
+registers t0, t1, t2, and t3:
+
+Texture2D gDiffuseMap[4] : register(t0);
+
+3 additional uses of dynamic indexing are given:
+
+1. Merging nearby meshes with different textures into a single render-item so that they can be drawn with one draw call. The
+meshes could store the texture/material to use as an attribute in the vertex structure.
+
+2. Multitexturing in a single rendering-pass where the textures have different sizes and formats.
+
+3. Instancing render-items with different textures and materials using the SV_InstanceID value as an index.

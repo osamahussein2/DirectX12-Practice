@@ -227,6 +227,7 @@ void Camera::UpdateViewMatrix()
 {
 	if(mViewDirty)
 	{
+		// Reorthonormalizes the camera’s right, up, and look vectors
 		XMVECTOR R = XMLoadFloat3(&mRight);
 		XMVECTOR U = XMLoadFloat3(&mUp);
 		XMVECTOR L = XMLoadFloat3(&mLook);

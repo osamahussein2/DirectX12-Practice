@@ -20,8 +20,31 @@
 // Include structures and functions for lighting.
 #include "LightingUtils.hlsl"
 
-Texture2D gDiffuseMap : register(t0);
-Texture2D gDisplacementMap : register(t1); // Chapter 13 WavesCS demo
+// Chapter 14 CameraAndDynamicIndexing demo
+struct MaterialData
+{
+    float4 DiffuseAlbedo;
+    float3 FresnelR0;
+    float Roughness;
+    float4x4 MatTransform;
+    uint DiffuseMapIndex;
+    uint MatPad0;
+    uint MatPad1;
+    uint MatPad2;
+};
+
+//Texture2D gDiffuseMap : register(t0);
+//Texture2D gDisplacementMap : register(t1); // Chapter 13 WavesCS demo
+
+// Chapter 14 CameraAndDynamicIndexing demo
+// An array of textures, which is only supported in shader model 5.1+.  Unlike Texture2DArray, the textures
+// in this array can be different sizes and formats, making it more flexible than texture arrays.
+Texture2D gDiffuseMap[4] : register(t0);
+
+// Chapter 14 CameraAndDynamicIndexing demo
+// Put in space1, so the texture array does not overlap with these resources.  
+// The texture array will occupy registers t0, t1, ..., t3 in space0. 
+StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
 
 //SamplerState gsamLinear : register(s0); // For Crate demo (Chapter 9)
 
@@ -39,9 +62,15 @@ cbuffer cbPerObject : register(b0)
     float4x4 gTexTransform; // Chapter 9 texturing demo
     
     // Chapter 13 WavesCS demo
-    float2 gDisplacementMapTexelSize;
-    float gGridSpatialStep;
-    float cbPerObjectPad1;
+    //float2 gDisplacementMapTexelSize;
+    //float gGridSpatialStep;
+    //float cbPerObjectPad1;
+    
+    // Chapter 14 CameraAndDynamicIndexing demo
+    uint gMaterialIndex;
+    uint gObjPad0;
+    uint gObjPad1;
+    uint gObjPad2;
 };
 
 // Constant data that varies per material.
@@ -120,6 +149,10 @@ VertexOut VS(VertexIn vin)
 	vin.NormalL = normalize( float3(-r+l, 2.0f*gGridSpatialStep, b-t) );
 	
 #endif
+    
+    // Chapter 14 CameraAndDynamicIndexing demo
+    // Fetch the material data.
+    MaterialData matData = gMaterialData[gMaterialIndex];
 	
     // Transform to world space.
     float4 posW = mul(float4(vin.PosL, 1.0f), gWorld);
@@ -133,8 +166,13 @@ VertexOut VS(VertexIn vin)
 	
     // gTexTransform and MatTransform are used in the vertex shader to transform the input texture coordinates
 	// Output vertex attributes for interpolation across triangle.
+    //float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
+    //vout.TexC = mul(texC, gMatTransform).xy;
+    
+    // Chapter 14 CameraAndDynamicIndexing demo
+    // Output vertex attributes for interpolation across triangle.
     float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
-    vout.TexC = mul(texC, gMatTransform).xy;
+    vout.TexC = mul(texC, matData.MatTransform).xy;
 
     return vout;
 }
@@ -142,7 +180,7 @@ VertexOut VS(VertexIn vin)
 float4 PS(VertexOut pin) : SV_Target
 {
     // Chapter 9 texturing demo
-    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo;
+    //float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo;
 	
     /* Observe that we only clip if ALPHA_TEST is defined; this is because we might not want to invoke clip for some render
     items, so we need to be able to switch it on/off by having specialized shaders. Moreover, there is a cost to using alpha
@@ -153,6 +191,17 @@ float4 PS(VertexOut pin) : SV_Target
 	// shader early, thereby skipping the rest of the shader code.
 	clip(diffuseAlbedo.a - 0.1f);
 #endif
+    
+    // Chapter 14 CameraAndDynamicIndexing demo
+    // Fetch the material data.
+    MaterialData matData = gMaterialData[gMaterialIndex];
+    float4 diffuseAlbedo = matData.DiffuseAlbedo;
+    float3 fresnelR0 = matData.FresnelR0;
+    float roughness = matData.Roughness;
+    uint diffuseTexIndex = matData.DiffuseMapIndex;
+
+	// Dynamically look up the texture in the array.
+    diffuseAlbedo *= gDiffuseMap[diffuseTexIndex].Sample(gsamLinearWrap, pin.TexC);
 
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);
@@ -165,8 +214,8 @@ float4 PS(VertexOut pin) : SV_Target
     // Indirect lighting.
     float4 ambient = gAmbientLight * diffuseAlbedo;
 
-    const float shininess = 1.0f - gRoughness;
-    Material mat = { diffuseAlbedo, gFresnelR0, shininess };
+    const float shininess = 1.0f - roughness;
+    Material mat = { diffuseAlbedo, fresnelR0, shininess };
     float3 shadowFactor = 1.0f;
     float4 directLight = ComputeLighting(gLights, mat, pin.PosW, pin.NormalW, toEyeW, shadowFactor);
 
