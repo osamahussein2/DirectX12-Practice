@@ -159,6 +159,7 @@
     <Text Include="Notes\Notes Chapter 11 Stenciling.txt" />
     <Text Include="Notes\Notes Chapter 10 Blending.txt" />
     <Text Include="Notes\Notes Chapter 15 Building a First Person Camera and Dynamic Indexing.txt" />
+    <Text Include="Notes\Notes Chapter 16 Instancing and Frustum Culling.txt" />
     <Text Include="Notes\Notes Chapter 8 Lighting.txt" />
     <Text Include="Notes\Notes Chapter 9 Texturing.txt" />
     <Text Include="Notes\Notes Chapter 7 Drawing in Direct3D Part II.txt" />
@@ -192,6 +193,7 @@
     <ClCompile Include="Common\MathHelper.cpp" />
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="LitWaves-Chapter8.cpp" />
+    <ClCompile Include="InstancingAndCulling-Chapter16.cpp" />
     <ClCompile Include="RenderTarget.cpp" />
     <ClCompile Include="BasicTessellation-Chapter14.cpp" />
     <ClCompile Include="BezierPatch-Chapter14.cpp" />

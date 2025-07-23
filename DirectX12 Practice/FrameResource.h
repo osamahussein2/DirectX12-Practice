@@ -69,6 +69,18 @@ struct PassConstants
     Light Lights[MaxLights];
 };
 
+// Chpater 16 demo
+// The instance buffer stores the data that varies per-instance
+struct InstanceData
+{
+    DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
+    DirectX::XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
+    UINT MaterialIndex;
+    UINT InstancePad0;
+    UINT InstancePad1;
+    UINT InstancePad2;
+};
+
 struct Vertex
 {
     Vertex() = default;
@@ -91,7 +103,8 @@ public:
     FrameResource(ID3D12Device* device, UINT passCount);
     //FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount);
     //FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount);
-    FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount);
+    //FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount);
+    FrameResource(ID3D12Device* device, UINT passCount, UINT maxInstanceCount, UINT materialCount); // Chapter 16 demo
     FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount, UINT waveVertCount);
     FrameResource(const FrameResource& rhs) = delete;
     FrameResource& operator=(const FrameResource& rhs) = delete;
@@ -115,6 +128,20 @@ public:
     // We cannot update a dynamic vertex buffer until the GPU is done processing
     // the commands that reference it.  So each frame needs their own.
     std::unique_ptr<UploadBuffer<Vertex>> WavesVB = nullptr;
+
+    // NOTE: In this demo, we instance only one render-item, so we only have
+    // one structured buffer to store instancing data. To make this more
+    // general (i.e., to support instancing multiple render-items), you
+    // would need to have a structured buffer for each render-item, and
+    // allocate each buffer with enough room for the maximum number of
+    // instances you would ever draw. This sounds like a lot, but it is
+    // actually no more than the amount of per-object constant data we
+    // would need if we were not using instancing. For example, if we
+    // were drawing 1000 objects without instancing, we would create a
+    // constant buffer with enough room for a 1000 objects. With instancing,
+    // we would just create a structured buffer large enough to store the
+    // instance data for 1000 instances.
+    std::unique_ptr<UploadBuffer<InstanceData>> InstanceBuffer = nullptr;
 
     // Fence value to mark commands up to this fence point.  This lets us
     // check if these frame resources are still in use by the GPU.

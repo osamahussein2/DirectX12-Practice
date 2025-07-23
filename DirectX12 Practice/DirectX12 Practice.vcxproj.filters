@@ -55,6 +55,9 @@
     <Filter Include="Source Files\Chapter 15 source files">
       <UniqueIdentifier>{f506bb36-55a1-45a4-ba97-ed00e1d30138}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Chapter 16 source files">
+      <UniqueIdentifier>{f53c6313-0cd2-4965-869b-302a1de4fe0f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoxApp.cpp">
@@ -159,6 +162,9 @@
     <ClCompile Include="CameraAndDynamicIndexing-Chapter15.cpp">
       <Filter>Source Files\Chapter 15 source files</Filter>
     </ClCompile>
+    <ClCompile Include="InstancingAndCulling-Chapter16.cpp">
+      <Filter>Source Files\Chapter 16 source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\Notes Introduction to DirectX12.txt">
@@ -207,6 +213,9 @@
       <Filter>Resource Files</Filter>
     </Text>
     <Text Include="Notes\Notes Chapter 15 Building a First Person Camera and Dynamic Indexing.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Notes\Notes Chapter 16 Instancing and Frustum Culling.txt">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>

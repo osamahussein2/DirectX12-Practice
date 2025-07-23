@@ -20,7 +20,18 @@
 // Include structures and functions for lighting.
 #include "LightingUtils.hlsl"
 
-// Chapter 14 CameraAndDynamicIndexing demo
+// Chapter 16 demo
+struct InstanceData
+{
+    float4x4 World;
+    float4x4 TexTransform;
+    uint MaterialIndex;
+    uint InstPad0;
+    uint InstPad1;
+    uint InstPad2;
+};
+
+// Chapter 15 CameraAndDynamicIndexing demo
 struct MaterialData
 {
     float4 DiffuseAlbedo;
@@ -36,15 +47,28 @@ struct MaterialData
 //Texture2D gDiffuseMap : register(t0);
 //Texture2D gDisplacementMap : register(t1); // Chapter 13 WavesCS demo
 
-// Chapter 14 CameraAndDynamicIndexing demo
+// Chapter 15 CameraAndDynamicIndexing demo
 // An array of textures, which is only supported in shader model 5.1+.  Unlike Texture2DArray, the textures
 // in this array can be different sizes and formats, making it more flexible than texture arrays.
-Texture2D gDiffuseMap[4] : register(t0);
+//Texture2D gDiffuseMap[4] : register(t0);
 
-// Chapter 14 CameraAndDynamicIndexing demo
+// Chapter 15 CameraAndDynamicIndexing demo
 // Put in space1, so the texture array does not overlap with these resources.  
 // The texture array will occupy registers t0, t1, ..., t3 in space0. 
-StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
+//StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
+
+// Chapter 16 demo
+// An array of textures, which is only supported in shader model 5.1+.
+// Unlike Texture2DArray, the textures in this array can be different
+// sizes and formats, making it more flexible than texture arrays.
+Texture2D gDiffuseMap[7] : register(t0);
+
+// Chapter 16 demo
+// Put in space1, so the texture array does not overlap with these.
+// The texture array above will occupy registers t0, t1, ..., t6 in
+// space0.
+StructuredBuffer<InstanceData> gInstanceData : register(t0, space1);
+StructuredBuffer<MaterialData> gMaterialData : register(t1, space1);
 
 //SamplerState gsamLinear : register(s0); // For Crate demo (Chapter 9)
 
@@ -56,7 +80,7 @@ SamplerState gsamAnisotropicWrap : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
 
 // Constant data that varies per frame.
-cbuffer cbPerObject : register(b0)
+/*cbuffer cbPerObject : register(b0)
 {
     float4x4 gWorld;
     float4x4 gTexTransform; // Chapter 9 texturing demo
@@ -66,15 +90,15 @@ cbuffer cbPerObject : register(b0)
     //float gGridSpatialStep;
     //float cbPerObjectPad1;
     
-    // Chapter 14 CameraAndDynamicIndexing demo
+    // Chapter 15 CameraAndDynamicIndexing demo
     uint gMaterialIndex;
     uint gObjPad0;
     uint gObjPad1;
     uint gObjPad2;
-};
+};*/
 
 // Constant data that varies per material.
-cbuffer cbPass : register(b1)
+cbuffer cbPass : register(b0) // used to be register(b1), this is for Chapter 16 demo
 {
     float4x4 gView;
     float4x4 gInvView;
@@ -83,8 +107,8 @@ cbuffer cbPass : register(b1)
     float4x4 gViewProj;
     float4x4 gInvViewProj;
     float3 gEyePosW;
-    //float cbPerObjectPad1;
-    float cbPerPassPad1; // Chapter 13 WavesCS demo
+    float cbPerObjectPad1;
+    //float cbPerPassPad1; // Chapter 13 WavesCS demo
     float2 gRenderTargetSize;
     float2 gInvRenderTargetSize;
     float gNearZ;
@@ -95,11 +119,11 @@ cbuffer cbPass : register(b1)
 
     // Allow application to change fog parameters once per frame.
     // For example, we may only use fog for certain times of day (Chapter 10 blending demo).
-    float4 gFogColor;
-    float gFogStart;
-    float gFogRange;
+    //float4 gFogColor;
+    //float gFogStart;
+    //float gFogRange;
     //float2 cbPerObjectPad2;
-    float2 cbPerPassPad2; // Chapter 13 WavesCS demo
+    //float2 cbPerPassPad2; // Chapter 13 WavesCS demo
 
     // Indices [0, NUM_DIR_LIGHTS) are directional lights;
     // indices [NUM_DIR_LIGHTS, NUM_DIR_LIGHTS+NUM_POINT_LIGHTS) are point lights;
@@ -108,13 +132,13 @@ cbuffer cbPass : register(b1)
     Light gLights[MaxLights];
 };
 
-cbuffer cbMaterial : register(b2)
+/*cbuffer cbMaterial : register(b2)
 {
     float4 gDiffuseAlbedo;
     float3 gFresnelR0;
     float gRoughness;
     float4x4 gMatTransform;
-};
+};*/
 
 struct VertexIn
 {
@@ -129,9 +153,13 @@ struct VertexOut
     float3 PosW : POSITION;
     float3 NormalW : NORMAL;
     float2 TexC : TEXCOORD; // Chapter 9 demos
+    
+    // Chapter 16 demo
+    // nointerpolation is used so the index is not interpolated across the triangle.
+    nointerpolation uint MatIndex : MATINDEX;
 };
 
-VertexOut VS(VertexIn vin)
+VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
 {
     VertexOut vout = (VertexOut) 0.0f;
     
@@ -150,16 +178,28 @@ VertexOut VS(VertexIn vin)
 	
 #endif
     
-    // Chapter 14 CameraAndDynamicIndexing demo
+    // Chapter 16 demo
+    // Fetch the instance data.
+    InstanceData instData = gInstanceData[instanceID];
+    float4x4 world = instData.World;
+    float4x4 texTransform = instData.TexTransform;
+    uint matIndex = instData.MaterialIndex;
+    
+    // Chapter 15 CameraAndDynamicIndexing demo
     // Fetch the material data.
-    MaterialData matData = gMaterialData[gMaterialIndex];
+    //MaterialData matData = gMaterialData[gMaterialIndex];
+    
+    // Chapter 16 demo
+    vout.MatIndex = matIndex;
+    // Fetch the material data.
+    MaterialData matData = gMaterialData[matIndex];
 	
     // Transform to world space.
-    float4 posW = mul(float4(vin.PosL, 1.0f), gWorld);
+    float4 posW = mul(float4(vin.PosL, 1.0f), world);
     vout.PosW = posW.xyz;
 
     // Assumes nonuniform scaling; otherwise, need to use inverse-transpose of world matrix.
-    vout.NormalW = mul(vin.NormalL, (float3x3) gWorld);
+    vout.NormalW = mul(vin.NormalL, (float3x3) world);
 
     // Transform to homogeneous clip space.
     vout.PosH = mul(posW, gViewProj);
@@ -169,9 +209,14 @@ VertexOut VS(VertexIn vin)
     //float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
     //vout.TexC = mul(texC, gMatTransform).xy;
     
-    // Chapter 14 CameraAndDynamicIndexing demo
+    // Chapter 15 CameraAndDynamicIndexing demo
     // Output vertex attributes for interpolation across triangle.
-    float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
+    //float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
+    //vout.TexC = mul(texC, matData.MatTransform).xy;
+    
+    // Chapter 16 demo
+    // Output vertex attributes for interpolation across triangle.
+    float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), texTransform);
     vout.TexC = mul(texC, matData.MatTransform).xy;
 
     return vout;
@@ -192,24 +237,35 @@ float4 PS(VertexOut pin) : SV_Target
 	clip(diffuseAlbedo.a - 0.1f);
 #endif
     
-    // Chapter 14 CameraAndDynamicIndexing demo
+    // Chapter 15 CameraAndDynamicIndexing demo
     // Fetch the material data.
-    MaterialData matData = gMaterialData[gMaterialIndex];
+    //MaterialData matData = gMaterialData[gMaterialIndex];
+    //float4 diffuseAlbedo = matData.DiffuseAlbedo;
+    //float3 fresnelR0 = matData.FresnelR0;
+    //float roughness = matData.Roughness;
+    //uint diffuseTexIndex = matData.DiffuseMapIndex;
+
+	// Dynamically look up the texture in the array.
+    //diffuseAlbedo *= gDiffuseMap[diffuseTexIndex].Sample(gsamLinearWrap, pin.TexC);
+    
+    // Chapter 16 demo
+    // Fetch the material data.
+    MaterialData matData = gMaterialData[pin.MatIndex];
     float4 diffuseAlbedo = matData.DiffuseAlbedo;
     float3 fresnelR0 = matData.FresnelR0;
     float roughness = matData.Roughness;
     uint diffuseTexIndex = matData.DiffuseMapIndex;
-
-	// Dynamically look up the texture in the array.
+    
+    // Dynamically look up the texture in the array.
     diffuseAlbedo *= gDiffuseMap[diffuseTexIndex].Sample(gsamLinearWrap, pin.TexC);
 
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);
 
     // Vector from point being lit to eye. 
-    float3 toEyeW = gEyePosW - pin.PosW;
-    float distToEye = length(toEyeW);
-    toEyeW /= distToEye; // normalize
+    float3 toEyeW = normalize(gEyePosW - pin.PosW);
+    //float distToEye = length(toEyeW);
+    //toEyeW /= distToEye; // normalize
 
     // Indirect lighting.
     float4 ambient = gAmbientLight * diffuseAlbedo;
