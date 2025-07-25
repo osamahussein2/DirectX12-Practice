@@ -50,7 +50,7 @@ struct MaterialData
 // Chapter 15 CameraAndDynamicIndexing demo
 // An array of textures, which is only supported in shader model 5.1+.  Unlike Texture2DArray, the textures
 // in this array can be different sizes and formats, making it more flexible than texture arrays.
-//Texture2D gDiffuseMap[4] : register(t0);
+Texture2D gDiffuseMap[4] : register(t0); // also works for Chapter 17 demo
 
 // Chapter 15 CameraAndDynamicIndexing demo
 // Put in space1, so the texture array does not overlap with these resources.  
@@ -61,14 +61,17 @@ struct MaterialData
 // An array of textures, which is only supported in shader model 5.1+.
 // Unlike Texture2DArray, the textures in this array can be different
 // sizes and formats, making it more flexible than texture arrays.
-Texture2D gDiffuseMap[7] : register(t0);
+//Texture2D gDiffuseMap[7] : register(t0);
 
 // Chapter 16 demo
 // Put in space1, so the texture array does not overlap with these.
 // The texture array above will occupy registers t0, t1, ..., t6 in
 // space0.
-StructuredBuffer<InstanceData> gInstanceData : register(t0, space1);
-StructuredBuffer<MaterialData> gMaterialData : register(t1, space1);
+//StructuredBuffer<InstanceData> gInstanceData : register(t0, space1);
+//StructuredBuffer<MaterialData> gMaterialData : register(t1, space1);
+
+// Chapter 17 demo
+StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
 
 //SamplerState gsamLinear : register(s0); // For Crate demo (Chapter 9)
 
@@ -80,7 +83,7 @@ SamplerState gsamAnisotropicWrap : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
 
 // Constant data that varies per frame.
-/*cbuffer cbPerObject : register(b0)
+cbuffer cbPerObject : register(b0)
 {
     float4x4 gWorld;
     float4x4 gTexTransform; // Chapter 9 texturing demo
@@ -95,10 +98,10 @@ SamplerState gsamAnisotropicClamp : register(s5);
     uint gObjPad0;
     uint gObjPad1;
     uint gObjPad2;
-};*/
+};
 
 // Constant data that varies per material.
-cbuffer cbPass : register(b0) // used to be register(b1), this is for Chapter 16 demo
+cbuffer cbPass : register(b1) // used to be register(b1), this is for Chapter 16 demo only
 {
     float4x4 gView;
     float4x4 gInvView;
@@ -180,26 +183,28 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
     
     // Chapter 16 demo
     // Fetch the instance data.
-    InstanceData instData = gInstanceData[instanceID];
-    float4x4 world = instData.World;
-    float4x4 texTransform = instData.TexTransform;
-    uint matIndex = instData.MaterialIndex;
+    //InstanceData instData = gInstanceData[instanceID];
+    //float4x4 world = instData.World;
+    //float4x4 texTransform = instData.TexTransform;
+    //uint matIndex = instData.MaterialIndex;
     
     // Chapter 15 CameraAndDynamicIndexing demo
     // Fetch the material data.
     //MaterialData matData = gMaterialData[gMaterialIndex];
     
     // Chapter 16 demo
-    vout.MatIndex = matIndex;
+    //vout.MatIndex = matIndex;
     // Fetch the material data.
-    MaterialData matData = gMaterialData[matIndex];
+    //MaterialData matData = gMaterialData[matIndex];
 	
+    MaterialData matData = gMaterialData[gMaterialIndex];
+    
     // Transform to world space.
-    float4 posW = mul(float4(vin.PosL, 1.0f), world);
+    float4 posW = mul(float4(vin.PosL, 1.0f), gWorld);
     vout.PosW = posW.xyz;
 
     // Assumes nonuniform scaling; otherwise, need to use inverse-transpose of world matrix.
-    vout.NormalW = mul(vin.NormalL, (float3x3) world);
+    vout.NormalW = mul(vin.NormalL, (float3x3) gWorld);
 
     // Transform to homogeneous clip space.
     vout.PosH = mul(posW, gViewProj);
@@ -216,7 +221,7 @@ VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
     
     // Chapter 16 demo
     // Output vertex attributes for interpolation across triangle.
-    float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), texTransform);
+    float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
     vout.TexC = mul(texC, matData.MatTransform).xy;
 
     return vout;
@@ -250,7 +255,10 @@ float4 PS(VertexOut pin) : SV_Target
     
     // Chapter 16 demo
     // Fetch the material data.
-    MaterialData matData = gMaterialData[pin.MatIndex];
+    //MaterialData matData = gMaterialData[pin.MatIndex];
+    
+    // Fetch the material data.
+    MaterialData matData = gMaterialData[gMaterialIndex];
     float4 diffuseAlbedo = matData.DiffuseAlbedo;
     float3 fresnelR0 = matData.FresnelR0;
     float roughness = matData.Roughness;

@@ -35,7 +35,7 @@ FrameResource::FrameResource(ID3D12Device* device, UINT passCount)
 }*/
 
 // For Crate demo (Chapter 9)
-/*FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount)
+FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount)
 {
     ThrowIfFailed(device->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -47,12 +47,10 @@ FrameResource::FrameResource(ID3D12Device* device, UINT passCount)
 
     // Chapter 14 CameraAndDynamicIndexing demo
     MaterialBuffer = std::make_unique<UploadBuffer<MaterialData>>(device, materialCount, false);
-
-    InstanceBuffer = std::make_unique<UploadBuffer<InstanceData>>(device, maxInstanceCount, false);
-}*/
+}
 
 // Chapter 16 demo
-FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT maxInstanceCount, UINT materialCount)
+/*FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT maxInstanceCount, UINT materialCount)
 {
     ThrowIfFailed(device->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_DIRECT,
@@ -63,7 +61,7 @@ FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT maxInsta
 
     // Note that InstanceBuffer is not a constant buffer, so we specify false for the last parameter
     InstanceBuffer = std::make_unique<UploadBuffer<InstanceData>>(device, maxInstanceCount, false);
-}
+}*/
 
 FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount, UINT waveVertCount)
 {

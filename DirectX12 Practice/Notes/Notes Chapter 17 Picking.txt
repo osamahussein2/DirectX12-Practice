@@ -1,0 +1,145 @@
+Now, we see that if we shoot a picking ray, originating at the eye position, through p, we will intersect the object whose
+projection surrounds p, namely the cylinder in this example.
+
+Therefore, our strategy is as follows: Once we compute the picking ray, we can iterate through each object in the scene and
+test if the ray intersects it. The object that the ray intersects is the object that was picked by the user.
+
+The first task is to transform the clicked screen point to normalized device coordinates.
+
+The variables of the viewport matrix refer to those of the D3D12_VIEWPORT structure:
+
+typedef struct D3D12_VIEWPORT
+{
+	FLOAT TopLeftX;
+	FLOAT TopLeftY;
+	FLOAT Width;
+	FLOAT Height;
+	FLOAT MinDepth;
+	FLOAT MaxDepth;
+} D3D12_VIEWPORT;
+
+Generally, for a game, the viewport is the entire backbuffer and the depth buffer range is 0 to 1. Thus, TopLeftX = 0,
+TopLeftY = 0, MinDepth = 0, MaxDepth = 1, Width = w, and Height = h, where w and h, are the width and height of the
+backbuffer, respectively.
+
+The coordinate zndc is just used by the depth buffer and we are not concerned with any depth coordinates for picking. The
+2D screen point ps = (xs, ys) corresponding to pndc is just the transformed x- and y-coordinates:
+
+xs = xndc * w + w / 2
+ys = -yndc * h + h / 2
+
+The above equation gives us the screen point ps in terms of the normalized device point pndc and the viewport dimensions.
+However, in our picking situation, we are initially given the screen point ps and the viewport dimensions, and we want to
+find pndc. Solving the above equations for pndc yields:
+
+xndc = (2xs / w) - 1
+yndc = (-2ys / h) + 1
+
+We now have the clicked point in NDC space. But to shoot the picking ray, we really want the screen point in view space.
+
+Thus, to get back to view space, we just need to multiply the x-coordinate in NDC space by the aspect ratio. The clicked
+point in view space is thus:
+
+xv = r * (2xs / w) - 1
+yv = (-2ys / h) + 1
+
+The projected y-coordinate in view space is the same in NDC space. This is because we chose the height of the projection
+window in view space to cover the interval [-1, 1].
+
+The projection window lies at a distance d = cot(a / 2) from the origin, where a is the vertical field of view angle. So we
+could shoot the picking ray through the point (xvs, yvs, d) on the projection window. However, this requires that we
+compute d = cot(a / 2).
+
+Thus, we can shoot our picking ray through the point (xv', yv', 1) instead. Note that this yields the same picking ray as
+the one shot through the point (xv, yv, d).
+
+Note that the ray originates from the origin in view space since the eye sits at the origin in view space.
+
+Because the view matrix transforms geometry from world space to view space, the inverse of the view matrix transforms
+geometry from view space to world space. If rv(t) = q + tu is the view space picking ray and V is the view matrix, then the
+world space picking ray is given by:
+
+rw(t) = qV^-1 + tu^-1
+= qw + tuw
+
+Note that the ray origin q is transformed as a point (i.e., qw = 1) and the ray direction u is transformed as a vector
+(i.e., uw = 0).
+
+A world space picking ray can be useful in some situations where you have some objects defined in world space. However,
+most of the time, the geometry of an object is defined relative to the object’s own local space.
+
+Therefore, to perform the ray/object intersection test, we must transform the ray into the local space of the object. If W
+is the world matrix of an object, the matrix W^-1 transforms geometry from world space to the local space of the object.
+Thus the local space picking ray is:
+
+rL(t) = qw * W^-1 + tuw * W^-1
+
+
+Generally, each object in the scene has its own local space. Therefore, the ray must be transformed to the local space of
+each scene object to do the intersection test.
+
+One might suggest transforming the meshes to world space and doing the intersection test there. However, this is too
+expensive. A mesh may contain thousands of vertices, and all those vertices would need to be transformed to world space. It
+is much more efficient to just transform the ray to the local spaces of the objects.
+
+The XMVector3TransformCoord and XMVector3TransformNormal functions take 3D vectors as parameters, but note that with the
+XMVector3TransformCoord function there is an understood w = 1 for the fourth component. On the other hand, with the
+XMVector3TransformNormal function there is an understood w = 0 for the fourth component. Thus we can use
+XMVector3TransformCoord to transform points and we can use XMVector3TransformNormal to transform vectors.
+
+Once we have the picking ray and a mesh in the same space, we can perform the intersection test to see if the picking ray
+intersects the mesh.
+
+Observe that for picking, we use the system memory copy of the mesh geometry stored in the MeshGeometry class. This is
+because we cannot access a vertex/index buffer for reading that is going to be drawn by the GPU. It is common to store
+system memory copies of geometry for things like picking and collision detection. Sometimes a simplified version of the mesh
+is stored for these purposes to save memory and computation.
+
+Even for meshes not near the picking ray, we would still have to iterate over each triangle to conclude the ray misses the
+mesh; this is wasteful and inefficient. A popular strategy is to approximate the mesh with a simple bounding volume, like a
+sphere or box. Then, instead of intersecting the ray with the mesh, we first intersect the ray with the bounding volume.
+
+If the ray misses the bounding volume, then the ray necessarily misses the triangle mesh and so there is no need to do
+further calculations. If the ray intersects the bounding volume, then we do the more precise ray/mesh test. Assuming that
+the ray will miss most bounding volumes in the scene, this saves us many ray/triangle intersection tests.
+
+The BoundingBox::Intersects function returns true if the ray intersects the box and false otherwise; it is prototyped as
+follows:
+
+bool XM_CALLCONV BoundingBox::Intersects(FXMVECTOR Origin, // ray origin
+	FXMVECTOR Direction, // ray direction (must be unit length)
+	float& Dist ); const // ray intersection parameter
+
+Given the ray r(t) = q + tu, the last parameter outputs the ray parameter t0 that yields the actual intersection point p:
+
+p = r(t0) = q + t0 * u
+
+There is also a ray/sphere intersection test given in the DirectX collision library:
+
+bool XM_CALLCONV BoundingSphere::Intersects(FXMVECTOR Origin, FXMVECTOR Direction, float& Dist ); const
+
+To give a flavor of these tests, we show how to derive the ray/sphere intersection test. The points p on the surface of a
+sphere with center c and radius r satisfy the equation: || p - c || = r
+
+If the ray direction is unit length, then a = u * u 1. If the solution has imaginary components, the ray misses the sphere.
+If the two real solutions are the same, the ray intersects a point tangent to the sphere. If the two real solutions are
+distinct, the ray pierces two points of the sphere. A negative solution indicates an intersection point "behind" the ray.
+The smallest positive solution gives the nearest intersection parameter.
+
+For performing a ray/triangle intersection test, we use the DirectX collision library function TriangleTests::Intersects:
+
+bool XM_CALLCONV TriangleTests::Intersects(
+ FXMVECTOR Origin, // ray origin
+ FXMVECTOR Direction, // ray direction (unit length)
+ FXMVECTOR V0, // triangle vertex v0
+ GXMVECTOR V1, // triangle vertex v1
+ HXMVECTOR V2, // triangle vertex v2
+ float& Dist ); // ray intersection parameter
+
+The demo for this chapter renders a car mesh and allows the user to pick a triangle by pressing the right mouse button, and
+the selected triangle is rendered using a "highlight" material. To render the triangle with a highlight, we need a
+render-item for it. Unlike the previous render-items in this book where we defined them at initialization time, this
+render-item can only be partially filled out at initialization time. This is because we do not yet know which triangle will
+be picked, and so we do not know the starting index location and world matrix. In addition, a triangle does not need to
+always be picked. Therefore, we have added a Visible property to the render-item structure. An invisible render-item will
+not be drawn.

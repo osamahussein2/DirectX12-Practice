@@ -58,6 +58,9 @@
     <Filter Include="Source Files\Chapter 16 source files">
       <UniqueIdentifier>{f53c6313-0cd2-4965-869b-302a1de4fe0f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Chapter 17 source files">
+      <UniqueIdentifier>{a302d295-729b-41f5-a093-c3e6f8f52f36}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoxApp.cpp">
@@ -165,6 +168,9 @@
     <ClCompile Include="InstancingAndCulling-Chapter16.cpp">
       <Filter>Source Files\Chapter 16 source files</Filter>
     </ClCompile>
+    <ClCompile Include="PickingApp-Chapter17.cpp">
+      <Filter>Source Files\Chapter 17 source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\Notes Introduction to DirectX12.txt">
@@ -216,6 +222,9 @@
       <Filter>Resource Files</Filter>
     </Text>
     <Text Include="Notes\Notes Chapter 16 Instancing and Frustum Culling.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Notes\Notes Chapter 17 Picking.txt">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>

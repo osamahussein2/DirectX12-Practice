@@ -103,8 +103,8 @@ public:
     FrameResource(ID3D12Device* device, UINT passCount);
     //FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount);
     //FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount);
-    //FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount);
-    FrameResource(ID3D12Device* device, UINT passCount, UINT maxInstanceCount, UINT materialCount); // Chapter 16 demo
+    FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount);
+    //FrameResource(ID3D12Device* device, UINT passCount, UINT maxInstanceCount, UINT materialCount); // Chapter 16 demo
     FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount, UINT waveVertCount);
     FrameResource(const FrameResource& rhs) = delete;
     FrameResource& operator=(const FrameResource& rhs) = delete;
