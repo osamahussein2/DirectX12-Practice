@@ -61,6 +61,12 @@
     <Filter Include="Source Files\Chapter 17 source files">
       <UniqueIdentifier>{a302d295-729b-41f5-a093-c3e6f8f52f36}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Chapter 18 source files">
+      <UniqueIdentifier>{a2254ddd-df9e-4a67-9677-41c26171314a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Chapter 18 header files">
+      <UniqueIdentifier>{652ea5d8-a78d-4319-a225-6217feb8d5a3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoxApp.cpp">
@@ -171,6 +177,15 @@
     <ClCompile Include="PickingApp-Chapter17.cpp">
       <Filter>Source Files\Chapter 17 source files</Filter>
     </ClCompile>
+    <ClCompile Include="CubeMap-Chapter18.cpp">
+      <Filter>Source Files\Chapter 18 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="DynamicCube-Chapter18.cpp">
+      <Filter>Source Files\Chapter 18 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="CubeRenderTarget.cpp">
+      <Filter>Source Files\Chapter 18 source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\Notes Introduction to DirectX12.txt">
@@ -227,6 +242,9 @@
     <Text Include="Notes\Notes Chapter 17 Picking.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="Notes\Notes Chapter 18 Cube Mapping.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FrameResource.h">
@@ -274,6 +292,9 @@
     <ClInclude Include="GpuWaves.h">
       <Filter>Header Files\Chapter 13 header files</Filter>
     </ClInclude>
+    <ClInclude Include="CubeRenderTarget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\LandAndWavesColor.hlsl">
@@ -309,8 +330,14 @@
     <FxCompile Include="Shaders\VecAdd.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\Tessellation.hlsl" />
     <FxCompile Include="Shaders\BezierTessellation.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Tessellation.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Common.hlsl" />
+    <FxCompile Include="Shaders\Sky.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>

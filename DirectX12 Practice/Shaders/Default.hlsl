@@ -18,10 +18,13 @@
 #endif
 
 // Include structures and functions for lighting.
-#include "LightingUtils.hlsl"
+//#include "LightingUtils.hlsl"
+
+// Include common HLSL code.
+#include "Common.hlsl"
 
 // Chapter 16 demo
-struct InstanceData
+/*struct InstanceData
 {
     float4x4 World;
     float4x4 TexTransform;
@@ -29,10 +32,10 @@ struct InstanceData
     uint InstPad0;
     uint InstPad1;
     uint InstPad2;
-};
+};*/
 
 // Chapter 15 CameraAndDynamicIndexing demo
-struct MaterialData
+/*struct MaterialData
 {
     float4 DiffuseAlbedo;
     float3 FresnelR0;
@@ -42,7 +45,7 @@ struct MaterialData
     uint MatPad0;
     uint MatPad1;
     uint MatPad2;
-};
+};*/
 
 //Texture2D gDiffuseMap : register(t0);
 //Texture2D gDisplacementMap : register(t1); // Chapter 13 WavesCS demo
@@ -50,7 +53,7 @@ struct MaterialData
 // Chapter 15 CameraAndDynamicIndexing demo
 // An array of textures, which is only supported in shader model 5.1+.  Unlike Texture2DArray, the textures
 // in this array can be different sizes and formats, making it more flexible than texture arrays.
-Texture2D gDiffuseMap[4] : register(t0); // also works for Chapter 17 demo
+//Texture2D gDiffuseMap[4] : register(t0); // also works for Chapter 17 demo
 
 // Chapter 15 CameraAndDynamicIndexing demo
 // Put in space1, so the texture array does not overlap with these resources.  
@@ -71,19 +74,19 @@ Texture2D gDiffuseMap[4] : register(t0); // also works for Chapter 17 demo
 //StructuredBuffer<MaterialData> gMaterialData : register(t1, space1);
 
 // Chapter 17 demo
-StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
+//StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
 
 //SamplerState gsamLinear : register(s0); // For Crate demo (Chapter 9)
 
-SamplerState gsamPointWrap : register(s0);
-SamplerState gsamPointClamp : register(s1);
-SamplerState gsamLinearWrap : register(s2);
-SamplerState gsamLinearClamp : register(s3);
-SamplerState gsamAnisotropicWrap : register(s4);
-SamplerState gsamAnisotropicClamp : register(s5);
+//SamplerState gsamPointWrap : register(s0);
+//SamplerState gsamPointClamp : register(s1);
+//SamplerState gsamLinearWrap : register(s2);
+//SamplerState gsamLinearClamp : register(s3);
+//SamplerState gsamAnisotropicWrap : register(s4);
+//SamplerState gsamAnisotropicClamp : register(s5);
 
 // Constant data that varies per frame.
-cbuffer cbPerObject : register(b0)
+/*cbuffer cbPerObject : register(b0)
 {
     float4x4 gWorld;
     float4x4 gTexTransform; // Chapter 9 texturing demo
@@ -98,10 +101,10 @@ cbuffer cbPerObject : register(b0)
     uint gObjPad0;
     uint gObjPad1;
     uint gObjPad2;
-};
+};*/
 
 // Constant data that varies per material.
-cbuffer cbPass : register(b1) // used to be register(b1), this is for Chapter 16 demo only
+/*cbuffer cbPass : register(b1) // used to be register(b1), this is for Chapter 16 demo only
 {
     float4x4 gView;
     float4x4 gInvView;
@@ -133,7 +136,7 @@ cbuffer cbPass : register(b1) // used to be register(b1), this is for Chapter 16
     // indices [NUM_DIR_LIGHTS+NUM_POINT_LIGHTS, NUM_DIR_LIGHTS+NUM_POINT_LIGHT+NUM_SPOT_LIGHTS)
     // are spot lights for a maximum of MaxLights per object.
     Light gLights[MaxLights];
-};
+};*/
 
 /*cbuffer cbMaterial : register(b2)
 {
@@ -159,10 +162,11 @@ struct VertexOut
     
     // Chapter 16 demo
     // nointerpolation is used so the index is not interpolated across the triangle.
-    nointerpolation uint MatIndex : MATINDEX;
+    //nointerpolation uint MatIndex : MATINDEX;
 };
 
-VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)
+//VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID) // Chapter 16 demo
+VertexOut VS(VertexIn vin)
 {
     VertexOut vout = (VertexOut) 0.0f;
     
@@ -284,6 +288,13 @@ float4 PS(VertexOut pin) : SV_Target
     float4 directLight = ComputeLighting(gLights, mat, pin.PosW, pin.NormalW, toEyeW, shadowFactor);
 
     float4 litColor = ambient + directLight;
+    
+    // Compute the reflection vector per-pixel and then use it to sample the environment map
+    // Add in specular reflections.
+    float3 r = reflect(-toEyeW, pin.NormalW);
+    float4 reflectionColor = gCubeMap.Sample(gsamLinearWrap, r);
+    float3 fresnelFactor = SchlickFresnel(fresnelR0, pin.NormalW, r);
+    litColor.rgb += shininess * fresnelFactor * reflectionColor.rgb;
 
 #ifdef FOG
     
