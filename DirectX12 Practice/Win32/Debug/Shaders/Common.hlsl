@@ -25,7 +25,8 @@ struct MaterialData
     float Roughness;
     float4x4 MatTransform;
     uint DiffuseMapIndex;
-    uint MatPad0;
+    uint NormalMapIndex; // Chapter 19 normal mapping demo
+    //uint MatPad0;
     uint MatPad1;
     uint MatPad2;
 };
@@ -35,7 +36,10 @@ TextureCube gCubeMap : register(t0);
 // An array of textures, which is only supported in shader model 5.1+. Unlike
 // Texture2DArray, the textures in this array can be different sizes and
 // formats, making it more flexible than texture arrays.
-Texture2D gDiffuseMap[4] : register(t1);
+//Texture2D gDiffuseMap[4] : register(t1);
+
+// Chapter 19 normal mapping demo
+Texture2D gTextureMaps[10] : register(t1);
 
 // Put in space1, so the texture array does not overlap with these resources.
 // The texture array will occupy registers t0, t1, ..., t3 in space0.
@@ -85,3 +89,30 @@ cbuffer cbPass : register(b1)
     // are spot lights for a maximum of MaxLights per object.
     Light gLights[MaxLights];
 };
+
+// Chapter 19 normal mapping demo
+
+//--------------------------------------------------------------------
+// Transforms a normal map sample to world space.
+//--------------------------------------------------------------------
+float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, float3 tangentW)
+{
+    // Uncompress each component from [0,1] to [-1,1].
+    float3 normalT = 2.0f * normalMapSample - 1.0f;
+    
+    /* After the interpolation, the tangent vector and normal vector may not be orthonormal. This code makes sure T is
+    orthonormal to N by subtracting off any component of T along the direction N. Note that there is the assumption that
+    unitNormalW is normalized */
+    
+    // Build orthonormal basis.
+    float3 N = unitNormalW;
+    float3 T = normalize(tangentW - dot(tangentW, N) * N);
+    float3 B = cross(N, T);
+    
+    float3x3 TBN = float3x3(T, B, N);
+    
+    // Transform from tangent space to world space.
+    float3 bumpedNormalW = mul(normalT, TBN);
+    
+    return bumpedNormalW;
+}

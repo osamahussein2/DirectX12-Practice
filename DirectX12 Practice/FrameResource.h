@@ -28,9 +28,13 @@ struct MaterialData
     DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
     DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
     float Roughness = 64.0f;
+
     // Used in texture mapping.
     DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
+
     UINT DiffuseMapIndex = 0;
+    UINT NormalMapIndex = 0; // Chapter 19 normal mapping demo
+
     UINT MaterialPad0;
     UINT MaterialPad1;
     UINT MaterialPad2;
@@ -93,6 +97,10 @@ struct Vertex
     //DirectX::XMFLOAT4 Color; // Chapter 7 demos
     DirectX::XMFLOAT3 Normal; // Chapter 8 lighting demo
     DirectX::XMFLOAT2 TexC; // Chapter 9 texturing demo
+
+    /* In our system, we will not store the bitangent vector B directly in memory. Instead, we will compute B = N × T when
+    we need B, where N is the usual averaged vertex normal (Chapter 19 normal mapping demo) */
+    DirectX::XMFLOAT3 TangentU;
 };
 
 // Stores the resources needed for the CPU to build the command lists

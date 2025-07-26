@@ -67,6 +67,21 @@
     <Filter Include="Header Files\Chapter 18 header files">
       <UniqueIdentifier>{652ea5d8-a78d-4319-a225-6217feb8d5a3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Chapter 19 source files">
+      <UniqueIdentifier>{5a9122e5-6298-48cf-b0cc-68a4259a7aea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Chapter 20 source files">
+      <UniqueIdentifier>{da7f4b79-a79a-49e9-b47c-3b9826e7a7d1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Chapter 21 source files">
+      <UniqueIdentifier>{b4efbf43-39e7-48f3-a053-52459880ea68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Chapter 22 source files">
+      <UniqueIdentifier>{269fd002-c37e-4d85-a543-2f4e58d18e00}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Chapter 23 source files">
+      <UniqueIdentifier>{a61955b3-3fbb-4672-92da-85eaf96508b5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoxApp.cpp">
@@ -186,6 +201,9 @@
     <ClCompile Include="CubeRenderTarget.cpp">
       <Filter>Source Files\Chapter 18 source files</Filter>
     </ClCompile>
+    <ClCompile Include="NormalMap-Chapter19.cpp">
+      <Filter>Source Files\Chapter 19 source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\Notes Introduction to DirectX12.txt">
@@ -243,6 +261,9 @@
       <Filter>Resource Files</Filter>
     </Text>
     <Text Include="Notes\Notes Chapter 18 Cube Mapping.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Notes Chapter 19 Normal Mapping.txt">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>
@@ -336,8 +357,10 @@
     <FxCompile Include="Shaders\Tessellation.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\Common.hlsl" />
     <FxCompile Include="Shaders\Sky.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Common.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>

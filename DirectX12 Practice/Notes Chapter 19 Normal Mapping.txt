@@ -1,0 +1,118 @@
+Texture mapping enabled us to map fine details from an image onto our triangles. However, our normal vectors are still
+defined at the coarser vertex level and interpolated over the triangle.
+
+For part of this chapter, we study a popular method for specifying surface normals at a higher resolution. Specifying
+surface normals at a higher resolution increases the detail of the lighting, but the mesh geometry detail remains unchanged.
+
+A normal map is a texture, but instead of storing RGB data at each texel, we store a compressed x-coordinate, y-coordinate,
+and z-coordinate in the red component, green component, and blue component, respectively. These coordinates define a normal
+vector; thus a normal map stores a normal vector at each pixel.
+
+Normals stored in a normal map relative to a texture space coordinate system defined by the vectors T (x-axis), B (y-axis),
+and N (z-axis). The T vector runs right horizontally to the texture image; the B vector runs down vertically to the texture
+image; and N is orthogonal to the texture plane.
+
+When we sample a normal map in a shader like this: float3 normalT = gNormalMap.Sample( gTriLinearSam, pin.Tex );
+
+The color vector normalT will have normalized components (r, g, b) such that 0 < r, g, b < 1. Thus, the method has already
+done part of the uncompressing work for us (namely the divide by 255, which transforms an integer in the range 0-255 to the
+floating-point interval [0, 1]). We complete the transformation by shifting and scaling each component in [0, 1] to [-1, 1]
+with the function g: [0, 1] -> [-1, 1] defined by: g(x) = 2x - 1
+
+In code, we apply this function to each color component like this:
+
+// Uncompress each component from [0,1] to [-1,1].
+normalT = 2.0f*normalT - 1.0f;
+
+This works because the scalar 1.0 is augmented to the vector (1, 1, 1) so that the expression makes sense and is done
+componentwise.
+
+If you want to use a compressed texture format to store normal maps, then use the BC7 (DXGI_FORMAT_BC7_UNORM) format for the
+best quality, as it significantly reduces the errors caused by compressing normal maps. For BC6 and BC7 formats, the DirectX
+SDK has a sample called "BC6HBC7EncoderDecoder11." This program can be used to convert your texture files to BC6 or BC7.
+
+Incorporating the triangle face normal N, we obtain a 3D TBN-basis in the plane of the triangle that we call texture space
+or tangent space.
+
+The normal vectors in a normal map are defined relative to the texture space. But our lights are defined in world space. In
+order to do lighting, the normal vectors and lights need to be in the same space. So our first step is to relate the tangent
+space coordinate system with the object space coordinate system the triangle vertices are relative to.
+
+Once we are in object space, we can use the world matrix to get from object space to world space.
+
+The relationship between the texture space of a triangle and the object space. The 3D tangent vector T aims in the u-axis
+direction of the texturing coordinate system, and the 3D tangent vector B aims in the v-axis direction of the texturing
+coordinate system.
+
+Let v0, v1, and v2 define the three vertices of a 3D triangle with corresponding texture coordinates (u0, v0), (u1, v1), and
+(u2, v2) that define a triangle in the texture plane relative to the texture space axes (i.e., T and B). Let e0 = v1 - v0
+and e1 = v2 - v0 be two edge vectors of the 3D triangle with corresponding texture triangle edge vectors (u0, v0) = (u1 -
+u0, v1 - v0) and (u1, v1) = (u2 - u0, v2 - v0).
+
+e0 = u0 * T + v0 * B
+e1 = u1 * T + v1 * B
+
+Note that the vectors T and B are generally not unit length in object space, and if there is texture distortion, they will
+not be orthonormal either.
+
+The T, B, and N vectors are commonly referred to as the tangent, binormal (or bitangent), and normal vectors, respectively.
+
+We derived a tangent space per triangle. However, if we use this texture space for normal mapping, we will get a
+triangulated appearance since the tangent space is constant over the face of the triangle. Therefore, we specify tangent
+vectors per vertex, and we do the same averaging trick that we did with vertex normals to approximate a smooth surface: 
+
+1. The tangent vector T for an arbitrary vertex v in a mesh is found by averaging the tangent vectors of every triangle in
+the mesh that shares the vertex v.
+
+2. The bitangent vector B for an arbitrary vertex v in a mesh is found by averaging the bitangent vectors of every triangle
+in the mesh that shares the vertex v.
+
+Generally, after averaging, the TBN-bases will generally need to be orthonormalized, so that the vectors are mutually
+orthogonal and of unit length. This is usually done using the Gram-Schmidt procedure. Code is available on the web for
+building a per-vertex tangent space for an arbitrary triangle mesh: http://www.terathon.com/code/tangent.html.
+
+Recall that our procedurally generated meshes created by GeometryGenerator compute the tangent vector T corresponding to the
+u-axis of the texture space. The object space coordinates of the tangent vector T is easily specified at each vertex for box
+and grid meshes. For cylinders and spheres, the tangent vector T at each vertex can be found by forming the vector-valued
+function of two variables P(u, v) of the cylinder/sphere and computing dp/du, where the parameter u is also used as the
+u-texture coordinate.
+
+In our shader program, we will actually want to transform the normal vector from tangent space to world space for lighting.
+One way would be to transform the normal from tangent space to object space first, and then use the world matrix to
+transform from object space to world space: 
+
+n(world) = ( n(tangent) * M(object) * M(world) )
+
+However, since matrix multiplication is associative, we can do it like this:
+
+n(world) = n(tangent) * ( M(object) * M(world) )
+
+We summarize the general process for normal mapping:
+
+1. Create the desired normal maps from some art program or utility program and store them in an image file. Create 2D
+textures from these files when the program is initialized.
+
+2. For each triangle, compute the tangent vector T. Obtain a per-vertex tangent vector for each vertex v in a mesh by
+averaging the tangent vectors of every triangle in the mesh that shares the vertex v. (In our demo, we use simple geometry
+and are able to specify the tangent vectors directly, but this averaging process would need to be done if using arbitrary
+triangle meshes made in a 3D modeling program.)
+
+3. In the vertex shader, transform the vertex normal and tangent vector to world space and output the results to the pixel
+shader.
+
+4. Using the interpolated tangent vector and normal vector, we build the TBN-basis at each pixel point on the surface of the
+triangle. We use this basis to transform the sampled normal vector from the normal map from tangent space to the world
+space. We then have a world space normal vector from the normal map to use for our usual lighting calculations.
+
+Observe that the "bumped normal" vector is use in the light calculation (inside Default.hlsl), but also in the reflection
+calculation for modeling reflections from the environment map. In addition, in the alpha channel of the normal map we store
+a shininess mask, which controls the shininess at a per-pixel level.
+
+The strategy of normal mapping is to texture our polygons with normal maps. We then have per-pixel normals, which capture
+the fine details of a surface like bumps, scratches, and crevices. We then use these per-pixel normals from the normal map
+in our lighting calculations, instead of the interpolated vertex normal.
+
+The idea of displacement mapping is to utilize an additional map, called a heightmap, which describes the bumps and crevices
+of a surface. Often it is combined with hardware tessellation, where it indicates how newly added vertices should be offset
+in the normal vector direction to add geometric detail to the mesh. Displacement mapping can be used to implement ocean
+waves.

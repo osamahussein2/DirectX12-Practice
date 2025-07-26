@@ -151,6 +151,7 @@ struct VertexIn
     float3 PosL : POSITION;
     float3 NormalL : NORMAL;
     float2 TexC : TEXCOORD; // Chapter 9 demos
+    float3 TangentU : TANGENT; // Chapter 19 normal mapping demo
 };
 
 struct VertexOut
@@ -158,6 +159,7 @@ struct VertexOut
     float4 PosH : SV_POSITION;
     float3 PosW : POSITION;
     float3 NormalW : NORMAL;
+    float3 TangentW : TANGENT; // Chapter 19 normal mapping demo
     float2 TexC : TEXCOORD; // Chapter 9 demos
     
     // Chapter 16 demo
@@ -209,6 +211,9 @@ VertexOut VS(VertexIn vin)
 
     // Assumes nonuniform scaling; otherwise, need to use inverse-transpose of world matrix.
     vout.NormalW = mul(vin.NormalL, (float3x3) gWorld);
+    
+    // Chapter 19 normal mapping demo
+    vout.TangentW = mul(vin.TangentU, (float3x3) gWorld);
 
     // Transform to homogeneous clip space.
     vout.PosH = mul(posW, gViewProj);
@@ -266,13 +271,21 @@ float4 PS(VertexOut pin) : SV_Target
     float4 diffuseAlbedo = matData.DiffuseAlbedo;
     float3 fresnelR0 = matData.FresnelR0;
     float roughness = matData.Roughness;
-    uint diffuseTexIndex = matData.DiffuseMapIndex;
+    uint diffuseMapIndex = matData.DiffuseMapIndex;
+    uint normalMapIndex = matData.NormalMapIndex; // Chapter 19 normal mapping demo
     
     // Dynamically look up the texture in the array.
-    diffuseAlbedo *= gDiffuseMap[diffuseTexIndex].Sample(gsamLinearWrap, pin.TexC);
+    //diffuseAlbedo *= gDiffuseMap[diffuseTexIndex].Sample(gsamLinearWrap, pin.TexC);
 
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);
+    
+    // Chapter 19 normal mapping demo
+    float4 normalMapSample = gTextureMaps[normalMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
+    float3 bumpedNormalW = NormalSampleToWorldSpace(normalMapSample.rgb, pin.NormalW, pin.TangentW);
+    
+    // Chapter 19 normal mapping demo
+    diffuseAlbedo *= gTextureMaps[diffuseMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
 
     // Vector from point being lit to eye. 
     float3 toEyeW = normalize(gEyePosW - pin.PosW);
@@ -282,18 +295,25 @@ float4 PS(VertexOut pin) : SV_Target
     // Indirect lighting.
     float4 ambient = gAmbientLight * diffuseAlbedo;
 
-    const float shininess = 1.0f - roughness;
+    //const float shininess = 1.0f - roughness;
+    // Alpha channel stores shininess at per-pixel level (Chapter 19 normal mapping demo
+    const float shininess = (1.0f - roughness) * normalMapSample.a;
     Material mat = { diffuseAlbedo, fresnelR0, shininess };
     float3 shadowFactor = 1.0f;
-    float4 directLight = ComputeLighting(gLights, mat, pin.PosW, pin.NormalW, toEyeW, shadowFactor);
+    //float4 directLight = ComputeLighting(gLights, mat, pin.PosW, pin.NormalW, toEyeW, shadowFactor);
+    
+    // Chapter 19 normal mapping demo
+    float4 directLight = ComputeLighting(gLights, mat, pin.PosW, bumpedNormalW, toEyeW, shadowFactor);
 
     float4 litColor = ambient + directLight;
     
     // Compute the reflection vector per-pixel and then use it to sample the environment map
     // Add in specular reflections.
-    float3 r = reflect(-toEyeW, pin.NormalW);
+    //float3 r = reflect(-toEyeW, pin.NormalW);
+    float3 r = reflect(-toEyeW, bumpedNormalW); // Chapter 19 normal mapping demo
     float4 reflectionColor = gCubeMap.Sample(gsamLinearWrap, r);
-    float3 fresnelFactor = SchlickFresnel(fresnelR0, pin.NormalW, r);
+    //float3 fresnelFactor = SchlickFresnel(fresnelR0, pin.NormalW, r);
+    float3 fresnelFactor = SchlickFresnel(fresnelR0, bumpedNormalW, r); // Chapter 19 normal mapping demo
     litColor.rgb += shininess * fresnelFactor * reflectionColor.rgb;
 
 #ifdef FOG

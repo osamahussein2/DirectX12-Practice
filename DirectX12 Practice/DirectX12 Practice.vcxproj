@@ -153,6 +153,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="Notes Chapter 19 Normal Mapping.txt" />
     <Text Include="Notes\Notes Chapter 18 Cube Mapping.txt" />
     <Text Include="Notes\Notes Chapter 17 Picking.txt" />
     <Text Include="Notes\Notes Chapter 13 The Compute Shader.txt" />
@@ -199,6 +200,7 @@
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="LitWaves-Chapter8.cpp" />
     <ClCompile Include="InstancingAndCulling-Chapter16.cpp" />
+    <ClCompile Include="NormalMap-Chapter19.cpp" />
     <ClCompile Include="PickingApp-Chapter17.cpp" />
     <ClCompile Include="RenderTarget.cpp" />
     <ClCompile Include="BasicTessellation-Chapter14.cpp" />
