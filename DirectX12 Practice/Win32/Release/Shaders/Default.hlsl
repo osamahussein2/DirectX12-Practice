@@ -157,10 +157,13 @@ struct VertexIn
 struct VertexOut
 {
     float4 PosH : SV_POSITION;
-    float3 PosW : POSITION;
+    // float3 PosW : POSITION;
+    float4 ShadowPosH : POSITION0; // Chapter 20 shadow mapping demo
+    float3 PosW : POSITION1; // Chapter 20 shadow mapping demo
     float3 NormalW : NORMAL;
     float3 TangentW : TANGENT; // Chapter 19 normal mapping demo
     float2 TexC : TEXCOORD; // Chapter 9 demos
+    float4 ProjTex : TEXCOORD1; // Chapter 20 shadow mapping demo
     
     // Chapter 16 demo
     // nointerpolation is used so the index is not interpolated across the triangle.
@@ -217,6 +220,11 @@ VertexOut VS(VertexIn vin)
 
     // Transform to homogeneous clip space.
     vout.PosH = mul(posW, gViewProj);
+    
+    // Chapter 20 shadow mapping demo
+    // Generate projective texture coordinates
+    // Transform to light’s projective space.
+    //vout.ProjTex = mul(float4(vIn.posL, 1.0f), gLightWorldViewProjTexture);
 	
     // gTexTransform and MatTransform are used in the vertex shader to transform the input texture coordinates
 	// Output vertex attributes for interpolation across triangle.
@@ -232,6 +240,11 @@ VertexOut VS(VertexIn vin)
     // Output vertex attributes for interpolation across triangle.
     float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
     vout.TexC = mul(texC, matData.MatTransform).xy;
+    
+    // Chapter 20 shadow mapping demo
+    // The transformation matrix gShadowTransform transforms from world space to the shadow map texture space
+    // Generate projective tex-coords to project shadow map onto scene.
+    vout.ShadowPosH = mul(posW, gShadowTransform);
 
     return vout;
 }
@@ -294,12 +307,17 @@ float4 PS(VertexOut pin) : SV_Target
 
     // Indirect lighting.
     float4 ambient = gAmbientLight * diffuseAlbedo;
+    
+    // Chapter 20 shadow mapping demo
+    // Only the first light casts a shadow.
+    float3 shadowFactor = float3(1.0f, 1.0f, 1.0f);
+    shadowFactor[0] = CalcShadowFactor(pin.ShadowPosH);
 
     //const float shininess = 1.0f - roughness;
     // Alpha channel stores shininess at per-pixel level (Chapter 19 normal mapping demo
     const float shininess = (1.0f - roughness) * normalMapSample.a;
     Material mat = { diffuseAlbedo, fresnelR0, shininess };
-    float3 shadowFactor = 1.0f;
+    //float3 shadowFactor = 1.0f;
     //float4 directLight = ComputeLighting(gLights, mat, pin.PosW, pin.NormalW, toEyeW, shadowFactor);
     
     // Chapter 19 normal mapping demo

@@ -153,7 +153,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="Notes Chapter 19 Normal Mapping.txt" />
+    <Text Include="Notes\Notes Chapter 19 Normal Mapping.txt" />
+    <Text Include="Notes\Notes Chapter 20 Shadow Mapping.txt" />
     <Text Include="Notes\Notes Chapter 18 Cube Mapping.txt" />
     <Text Include="Notes\Notes Chapter 17 Picking.txt" />
     <Text Include="Notes\Notes Chapter 13 The Compute Shader.txt" />
@@ -205,6 +206,8 @@
     <ClCompile Include="RenderTarget.cpp" />
     <ClCompile Include="BasicTessellation-Chapter14.cpp" />
     <ClCompile Include="BezierPatch-Chapter14.cpp" />
+    <ClCompile Include="ShadowMap.cpp" />
+    <ClCompile Include="Shadows-Chapter20.cpp" />
     <ClCompile Include="WavesCS-Chapter13.cpp" />
     <ClCompile Include="VecAdd-Chapter13.cpp" />
     <ClCompile Include="Shapes-Chapter7.cpp" />
@@ -231,6 +234,7 @@
     <ClInclude Include="FrameResource.h" />
     <ClInclude Include="GpuWaves.h" />
     <ClInclude Include="RenderTarget.h" />
+    <ClInclude Include="ShadowMap.h" />
     <ClInclude Include="SobelFilter.h" />
     <ClInclude Include="Waves.h" />
   </ItemGroup>
@@ -254,6 +258,8 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </FxCompile>
+    <FxCompile Include="Shaders\ShadowDebug.hlsl" />
+    <FxCompile Include="Shaders\Shadows.hlsl" />
     <FxCompile Include="Shaders\shapeColor.hlsl" />
     <FxCompile Include="Shaders\Sky.hlsl" />
     <FxCompile Include="Shaders\Sobel.hlsl">

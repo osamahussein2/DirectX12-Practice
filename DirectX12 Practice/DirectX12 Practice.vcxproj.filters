@@ -82,6 +82,9 @@
     <Filter Include="Source Files\Chapter 23 source files">
       <UniqueIdentifier>{a61955b3-3fbb-4672-92da-85eaf96508b5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Chapter 20 header files">
+      <UniqueIdentifier>{161b9bbd-2009-44ee-b375-749c9a8c5396}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoxApp.cpp">
@@ -204,6 +207,12 @@
     <ClCompile Include="NormalMap-Chapter19.cpp">
       <Filter>Source Files\Chapter 19 source files</Filter>
     </ClCompile>
+    <ClCompile Include="Shadows-Chapter20.cpp">
+      <Filter>Source Files\Chapter 20 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="ShadowMap.cpp">
+      <Filter>Source Files\Chapter 20 source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\Notes Introduction to DirectX12.txt">
@@ -263,7 +272,10 @@
     <Text Include="Notes\Notes Chapter 18 Cube Mapping.txt">
       <Filter>Resource Files</Filter>
     </Text>
-    <Text Include="Notes Chapter 19 Normal Mapping.txt">
+    <Text Include="Notes\Notes Chapter 19 Normal Mapping.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+    <Text Include="Notes\Notes Chapter 20 Shadow Mapping.txt">
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>
@@ -314,7 +326,10 @@
       <Filter>Header Files\Chapter 13 header files</Filter>
     </ClInclude>
     <ClInclude Include="CubeRenderTarget.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Chapter 18 header files</Filter>
+    </ClInclude>
+    <ClInclude Include="ShadowMap.h">
+      <Filter>Header Files\Chapter 20 header files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -361,6 +376,12 @@
       <Filter>Shader Files</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\Common.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Shadows.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ShadowDebug.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>

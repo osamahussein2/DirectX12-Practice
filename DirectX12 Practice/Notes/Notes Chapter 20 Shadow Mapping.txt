@@ -1,0 +1,245 @@
+Shadows indicate to the observer where light originates and helps convey the relative locations of objects in a scene.
+
+The shadow mapping algorithm relies on rendering the scene depth from the viewpoint of the light source - this is
+essentially a variation of render-to-texture.  By "rendering scene depth" we mean building the depth buffer from the
+viewpoint of the light source. Thus, after we have rendered the scene from the viewpoint of the light source, we will know
+the pixel fragments nearest to the light source - such fragments cannot be in shadow.
+
+The shadow mapping algorithm requires two render passes. In the first one, we render the scene depth from the viewpoint of
+the light into the shadow map; in the second pass, we render the scene as normal to the back buffer from our "player"
+camera, but use the shadow map as a shader input to implement the shadowing algorithm.
+
+The key property of perspective projection is that objects are perceived as getting smaller as their distance from the eye
+increases. This agrees with how we perceive things in real life.
+
+Another type of projection is an orthographic projection. Such projections are primarily used in 3D science or engineering
+applications, where it is desirable to have parallel lines remain parallel after projection. However, orthographic
+projections will enable us to model shadows that parallel lights generate.
+
+The orthographic viewing volume is a box that is axis aligned with the view coordinate system.
+
+The orthographic projection of points onto the projection plane. The lines of projection are parallel to the view space
+z-axis with an orthographic projection.
+
+With an orthographic projection, the viewing volume is a box axis-aligned with the view space with width w, height h, near
+plane n and far plane f that looks down the positive z-axis of view space.
+
+With an orthographic projection, the lines of projection are parallel to the view space z-axis. And we see that the 2D
+projection of a vertex (x, y, z) is just (x, y).
+
+To transform the view volume from view space to NDC space, we need to rescale and shift to map the view space view volume
+to the NDC space view volume.
+
+Recall that with the perspective projection transform, we had to split it into two parts: a linear part described by the
+projection matrix, and a nonlinear part described by the divide by w. In contrast, the orthographic projection
+transformation is completely linear—there is no divide by w. Multiplying by the orthographic projection matrix takes us
+directly into NDC coordinates.
+
+Projective texturing is so called because it allows us to project a texture onto arbitrary geometry, much like a slide
+projector.
+
+Projective texturing can be useful on its own for modeling slide projector lights, but it is also used as an intermediate
+step for shadow mapping.
+
+The key to projective texturing is to generate texture coordinates for each pixel in such a way that the applied texture
+looks like it has been projected onto the geometry. We will call such generated texture coordinates projective texture
+coordinates.
+
+We see that the texture coordinates (u, v) identify the texel that should be projected onto the 3D point p. But the
+coordinates (u, v) precisely identify the projection of p on the projection window, relative to a texture space coordinate
+system on the projection window by following the line of sight from the light origin to the point p.
+
+So the strategy of generating projective texture coordinates is as follows:
+
+1. Project the point p onto the light’s projection window and transform the coordinates to NDC space.
+
+2. Transform the projected coordinates from NDC space to texture space, thereby effectively turning them into texture
+coordinates.
+
+Step 1 can be implemented by thinking of the light projector as a camera. We define a view matrix V and projection matrix P
+for the light projector. Together, these matrices essentially define the position, orientation, and frustum of the light
+projector in the world. The matrix V transforms coordinates from world space to the coordinate system of the light
+projector. Once the coordinates are relative to the light coordinate system, the projection matrix, along with the
+homogeneous divide, are used to project the vertices onto the projection plane of the light.
+
+Step 2 is accomplished by transforming from NDC space to texture space via the following change of coordinate transformation:
+
+u = 0.5x + 0.5
+v = -0.5y + 0.5
+
+Here, u, v E [0, 1] provided x, y E [-1, 1]. We scale the y-coordinate by a negative to invert the axis because the
+positive y-axis in NDC coordinates goes in the direction opposite to the positive v-axis in texture coordinates.
+
+In the rendering pipeline, geometry outside the frustum is clipped. However, when we generate projective texture coordinates
+by projecting the geometry from the point of view of the light projector, no clipping is done - we simply project vertices.
+
+Consequently, geometry outside the projector’s frustum receives projective texture coordinates outside the [0, 1] range.
+Projective texture coordinates outside the [0, 1] range function just like normal texture coordinates outside the [0, 1]
+range based on the enabled address mode used when sampling the texture.
+
+Generally, we do not want to texture any geometry outside the projector’s frustum because it does not make sense (such
+geometry receives no light from the projector). Using the border color address mode with a zero color is a common solution.
+Another strategy is to associate a spotlight with the projector so that anything outside the spotlight’s field of view cone
+is not lit (i.e., the surface receives no projected light).
+
+The advantage of using a spotlight is that the light intensity from the projector is strongest at the center of the
+spotlight cone, and can smoothly fade out as the angle O| between -L and d increases (where L is the light vector to the
+surface point and d is the direction of the spotlight).
+
+The reason for not dividing by w because after an orthographic projection, the coordinates are already in NDC space. This is
+faster, because it avoids the per-pixel division required for perspective projection. On the other hand, leaving in the
+division does not hurt because it divides by 1 (an orthographic projection does not change the w-coordinate, so w will be 1).
+
+If we leave the division by w in the shader code, then the shader code works for both perspective and orthographic
+projections uniformly. Though, the tradeoff for this uniformity is that you do a superfluous division with an orthographic
+projection.
+
+The idea of the shadow mapping algorithm is to render-to-texture the scene depth from the viewpoint of the light into a
+depth buffer called a shadow map. After this is done, the shadow map will contain the depth values of all the visible pixels
+from the perspective of the light. (Pixels occluded by other pixels will not be in the shadow map because they will fail the
+depth test and either be overwritten or never written).
+
+To render the scene from the viewpoint of the light, we need to define a light view matrix that transforms coordinates from
+world space to the space of the light and a light projection matrix, which describes the volume that light emits through
+in the world. This can be either a frustum volume (perspective projection) or box volume (orthographic projection).
+
+A frustum light volume can be used to model spotlights by embedding the spotlight cone inside the frustum. A box light
+volume can be used to model parallel lights. However, the parallel light is now bounded and only passes through the box
+volume; therefore, it may only strike a subset of the scene. For a light source that strikes the entire scene (such as the
+sun), we can make the light volume large enough to contain the entire scene.
+
+Once we have built the shadow map, we render the scene as normal from the perspective of the "player" camera. For each pixel
+p rendered, we also compute its depth from the light source, which we denote by d(p). In addition, using projective
+texturing, we sample the shadow map along the line of sight from the light source to the pixel p to get the depth value s(p)
+stored in the shadow map; this value is the depth of the pixel closest to the light along the line of sight from the
+position of the light to p. Then, we see that a pixel p is in shadow if and only if d(p) > s(p). Hence a pixel is not in
+shadow if and only if d(p) <= s(p).
+
+The depth values compared are in NDC coordinates. This is because the shadow map, which is a depth buffer, stores the depth
+values in NDC coordinates.
+
+The shadow map stores the depth of the nearest visible pixels with respect to its associated light source. However, the
+shadow map only has some finite resolution. So each shadow map texel corresponds to an area of the scene. Thus, the shadow
+map is just a discrete sampling of the scene depth from the light perspective. This causes aliasing issues known as shadow
+acne.
+
+Notice the aliasing on the floor plane with the "stair-stepping" alternation between light and shadow. This aliasing error
+is often called shadow acne.
+
+The shadow map samples the depth of the scene. Observe that due to finite resolution of the shadow map, each shadow map
+texel corresponds to an area of the scene. The eye E sees two points on the scene p1 and p2 that correspond to different
+screen pixels. However, from the viewpoint of the light, both points are covered by the same shadow map texel (that is,
+s(p1) = s(p2) = s). When we do the shadow map test, we have d(p1) > s and d(p2) <= s. Thus, p1 will be colored as if it were
+in shadow, and p2 will be colored as if it were not in shadow. This causes the shadow acne.
+
+By biasing the depth values in the shadow map, no false shadowing occurs. We have that d(p1) <= s and d(p2) <= s. Finding
+the right depth bias is usually done by experimentation.
+
+A simple solution for shadow acne is to apply a constant bias to offset the shadow map depth.
+
+Too much biasing results in an artifact called peter-panning, where the shadow appears to become detached from the object.
+
+Unfortunately, a fixed bias does not work for all geometry. In particular, Figure 20.11 shows that triangles with large
+slopes (with respect to the light source) need a larger bias. It is tempting to choose a large enough depth bias to handle
+all slopes. However, as Figure 20.10 showed, this leads to peter-panning.
+
+Polygons with large slopes, relative to the light source, require more bias than polygons with small slopes relative to the
+light source.
+
+What we want is a way to measure the polygon slope with respect to the light source, and apply more bias for larger sloped
+polygons. Fortunately, graphics hardware has intrinsic support for this via the so-called slope-scaled-bias rasterization
+state properties:
+
+typedef struct D3D12_RASTERIZER_DESC {
+ [...]
+ INT DepthBias;
+ FLOAT DepthBiasClamp;
+ FLOAT SlopeScaledDepthBias;
+ [...]
+} D3D12_RASTERIZER_DESC;
+
+1. DepthBias: A fixed bias to apply.
+
+2. DepthBiasClamp: A maximum depth bias allowed. This allows us to set a bound on the depth bias, for we can imagine that
+for very steep slopes, the bias slope-scaled-bias would be too much and cause peter-panning artifacts.
+
+3. SlopeScaledDepthBias: A scale factor to control how much to bias based on the polygon slope.
+
+Note that we apply the slope-scaled-bias when we are rendering the scene to the shadow map. This is because we want to bias
+based on the polygon slope with respect to the light source. Consequently, we are biasing the shadow map values.
+
+Depth bias happens during rasterization (after clipping), so does not affect geometry clipping.
+
+The projective texture coordinates (u, v) used to sample the shadow map generally will not coincide with a texel in the
+shadow map. Usually, it will be between four texels. With color texturing, this is solved with bilinear interpolation.
+
+However, [Kilgard01] points out that we should not average depth values, as it can lead to incorrect results about a pixel
+being flagged in shadow. (For the same reason, we also cannot generate mipmaps for the shadow map.)
+
+Instead of interpolating the depth values, we interpolate the results - this is called percentage closer filtering (PCF).
+That is, we use point filtering (MIN_MAG_MIP_POINT) and sample the texture with coordinates (u, v), (u + x, v), (u, v + x),
+(u + x, v + x), where x = 1/SHADOW_MAP_SIZE.
+
+Since we are using point sampling, these four points will hit the nearest four texels s0, s1, s2, and s3, respectively,
+surrounding (u, v).
+
+The HLSL frac function returns the fractional part of a floating-point number (i.e., the mantissa). For example, if
+SMAP_SIZE = 1024 and projTex.xy = (0.23, 0.68), then texelPos = (235.52, 696.32) and frac(texelPos) = (0.52, 0.32). These
+fractions tell us how much to interpolate between the samples. The HLSL lerp(x, y, s) function is the linear interpolation
+function and returns x + s(y - x) = (1 - s)x + sy.
+
+The main disadvantage of PCF filtering as described above is that it requires four texture samples. Sampling textures is one
+of the more expensive operations on a modern GPU because memory bandwidth and memory latency have not improved as much as
+the raw computational power of GPUs.
+
+We then define a light view matrix and projection matrix (representing the light frame and view volume) after building the
+shadow mapping. The light view matrix is derived from the primary light source, and the light view volume is computed to fit
+the bounding sphere of the entire scene.
+
+Fortunately, Direct3D 11+ graphics hardware has built in support for PCF via the SampleCmpLevelZero method:
+
+Texture2D gShadowMap : register(t1);
+SamplerComparisonState gsamShadow : register(s6);
+
+// Complete projection by doing division by w.
+shadowPosH.xyz /= shadowPosH.w;
+
+// Depth in NDC space.
+float depth = shadowPosH.z;
+
+// Automatically does a 4-tap PCF.
+gShadowMap.SampleCmpLevelZero(gsamShadow, shadowPosH.xy, depth).r;
+
+The LevelZero part of the method name means that it only looks at the top mipmap level, which is fine because that is what
+we want for shadow mapping (we do not generate a mipmap chain for the shadow map). This method does not use a typical
+sampler object, but instead uses a so-called comparison sampler.
+
+This is so that the hardware can do the shadow map comparison test, which needs to be done before filtering the results. For
+PCF, you need to use the filter D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT and set the comparison function to
+LESS_EQUAL (LESS also works since we bias the depth). The first and second parameters are the comparison sampler and texture
+coordinates, respectively. The third parameter is the value to compare against the shadow map samples.
+
+Then the hardware bilinearly interpolates the results to finish the PCF.
+
+From the SDK documentation, only the following formats support comparison filters: R32_FLOAT_X8X24_TYPELESS, R32_FLOAT,
+R24_UNORM_X8_TYPELESS, R16_UNORM.
+
+We used a 4-tap PCF kernel. Larger kernels can be used to make the edges of shadows larger and even smoother, at the
+expensive of extra SampleCmpLevelZero calls. Using large filtering kernels can cause the shadow acne problem to return.
+
+The shadow factor is a scalar in the range 0 to 1. A value of 0 indicates a point is in shadow, and a value of 1 indicates a
+point is not in shadow. With PCF, a point can also be partially in shadow, in which case the shadow factor will be between 0
+and 1.
+
+The shadow factor does not affect ambient light since that is indirect light, and it also does not affect reflective light
+coming from the environment map.
+
+Computing the shadow test for a pixel p visible by the eye. With no PCF, we compute the distance d = d(p) and compare it to
+the corresponding shadow map value s0 = s(p). With PCF, we also compare neighboring shadow map values s-1 and s1 against d.
+However, it is not valid to compare d with s-1 and s1. The texels s-1 and s1 describe the depths of different areas of the
+scene that may or may not be on the same polygon as p.
+
+The back buffer need not always be the render target; we can render to a different texture. Rendering to texture provides an
+efficient way for the GPU to update the contents of a texture at runtime. After we have rendered to a texture, we can bind
+the texture as a shader input and map it onto geometry. Many special effects require render to texture functionality like
+shadow maps, water simulations, and general purpose GPU programming.
