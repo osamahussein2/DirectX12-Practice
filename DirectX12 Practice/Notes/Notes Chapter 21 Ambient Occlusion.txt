@@ -1,0 +1,84 @@
+The idea of ambient occlusion is that the amount of indirect light a point p on a surface receives is proportional to how
+occluded it is to incoming light over the hemisphere about p.
+
+Figure 21.2. (a) A point p is completely unoccluded and all incoming light over the hemisphere about p reaches p. 
+(b) Geometry partially occludes p and blocks incoming light rays over the hemisphere about p.
+
+One way to estimate the occlusion of a point p is via ray casting. We randomly cast rays over the hemisphere about p, and
+check for intersections against the mesh. If we cast N rays, and h of them intersect the mesh, then the point has the
+occlusion value: occlusion = h / N * E [0, 1]
+
+Only rays with an intersection point q whose distance from p is less than some threshold value d should contribute to the
+occlusion estimate; this is because an intersection point q far away from p is too far to occlude it.
+
+The occlusion factor measures how occluded the point is (i.e., how much light it does not receive). For the purposes of
+calculations, we like to work with the inverse of this. That is, we want to know how much light the point does receive -
+this is called accessibility (or we call it ambient-access) and is derived from occlusion as:
+
+accessiblity = 1 - occlusion * E [0, 1]
+
+Figure 21.4. The mesh is rendered only with ambient occlusion-there are no scene lights. Notice how the crevices are darker;
+this is because when we cast rays out they are more likely to intersect geometry and contribute to occlusion. On the other
+hand, the skull cap is white (unoccluded) because when we cast rays out over the hemisphere for points on the skull cap,
+they will not intersect any geometry of the skull.
+
+Precomputing ambient occlusion works well for static models; there are even tools (http://www.xnormal.net) that generate
+ambient occlusion maps—textures that store ambient occlusion data.
+
+The strategy of screen space ambient occlusion (SSAO) is, for every frame, render the scene view space normals to a full
+screen render target and the scene depth to the usual depth/stencil buffer, and then estimate the ambient occlusion at each
+pixel using only the view space normal render target and the depth/stencil buffer as input. Once we have a texture that
+represents the ambient occlusion at each pixel, we render the scene as usual to the back buffer, but apply the SSAO
+information to scale the ambient term at each pixel.
+
+First we render the view space normal vectors of the scene objects to a screen sized DXGI_FORMAT_R16G16B16A16_FLOAT texture
+map, while the usual depth/stencil buffer is bound to lay down the scene depth.
+
+After we have laid down the view space normals and scene depth, we disable the depth buffer (we do not need it for
+generating the ambient occlusion texture), and draw a full screen quad to invoke the SSAO pixel shader at each pixel.
+
+The pixel shader will then use the normal texture and depth buffer to generate an ambient accessibility value at each pixel.
+We call the generated texture map in this pass the SSAO map. Although we render the normal/depth map at full screen
+resolution (i.e., the resolution of our back buffer), we render to the SSAO map at half the width and height of the back
+buffer for performance reasons. Rendering at half the dimensions does not affect quality too much, as ambient occlusion is a
+low frequency effect.
+
+These to-near-plane vectors are interpolated across the quad and give us a vector v from the eye to the near plane for each
+pixel. Now, for each pixel, we sample the depth buffer so that we have the z-coordinate pz of the nearest visible point to
+the eye in NDC coordinates. The goal is to reconstruct the view space position p = (px, py, pz) from the sampled NDC
+z-coordinate pz and the interpolated to-near-plane vector v.
+
+We randomly sample N points q about p that are also in front of p and within a specified occlusion radius. The occlusion
+radius is an artistic parameter to control how far away from p we want to take the random sample points. Choosing to only
+sample points in front of p is analogous to only casting rays over the hemisphere instead of the whole sphere when doing ray
+casted ambient occlusion.
+
+We can generate random vectors and store them in a texture map, and then sample this texture map at N different positions to
+get N random vectors. However, since they are random we have no guarantee that the vectors we sample will be uniformly
+distributed - they may all clump together in roughly the same direction, which would give a bad occlusion estimate.
+
+Now that we have our potential occluding points r, we can perform our occlusion test to estimate if they occlude p. The test
+relies on two quantities:
+
+1. The view space depth distance |pz - rz|. We linearly scale down the occlusion as the distance increases since points
+farther away from have less of an occluding effect. If the distance is beyond some specified maximum distance, then no
+occlusion occurs. Also, if the distance is very small, then we assume p and q are on the same plane so q cannot occlude p.
+
+2. The angle between n and r - p measured by max(n * (r - p / ||r - p||), 0). This is to prevent self-intersection.
+
+After we have summed the occlusion from each sample, we compute the average occlusion by dividing by the sample count. Then
+we compute the ambient-access, and finally raise the ambient-access to a power to increase the contrast. You may also wish
+to increase the brightness of the ambient map by adding some number to increase the intensity.
+
+For scenes with large viewing distances, rendering errors can result due to the limited accuracy of the depth buffer. A
+simple solution is to fade out the affect of SSAO with distance.
+
+An edge preserving blur smoothes out the noise.
+
+Instead, when we render the scene to the back buffer, we bind the ambient map as a shader input. We then generate projective
+texture coordinates (with respect to the camera), sample the SSAO map, and apply it only to the ambient term of the lighting
+equation.
+
+The advantage of SSAO is most apparent when objects are in shadow. For when objects are in shadow, the diffuse and specular
+terms are killed; thus only the ambient term shows up. Without SSAO, objects in shadow will appear flatly lit by a constant
+ambient term, but with SSAO they will keep their 3D definition.

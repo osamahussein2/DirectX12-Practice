@@ -27,7 +27,7 @@ struct MaterialData
 {
     DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
     DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
-    float Roughness = 64.0f;
+    float Roughness = 0.5f;
 
     // Used in texture mapping.
     DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
@@ -35,7 +35,7 @@ struct MaterialData
     UINT DiffuseMapIndex = 0;
     UINT NormalMapIndex = 0; // Chapter 19 normal mapping demo
 
-    UINT MaterialPad0;
+    //UINT MaterialPad0;
     UINT MaterialPad1;
     UINT MaterialPad2;
 };
@@ -48,7 +48,8 @@ struct PassConstants
     DirectX::XMFLOAT4X4 InvProj = MathHelper::Identity4x4();
     DirectX::XMFLOAT4X4 ViewProj = MathHelper::Identity4x4();
     DirectX::XMFLOAT4X4 InvViewProj = MathHelper::Identity4x4();
-    DirectX::XMFLOAT4X4 ShadowTransform = MathHelper::Identity4x4();
+    DirectX::XMFLOAT4X4 ViewProjTex = MathHelper::Identity4x4(); // Chapter 21 ambient occlusion demo
+    DirectX::XMFLOAT4X4 ShadowTransform = MathHelper::Identity4x4(); // Chapter 20 shadow mapping demo
     DirectX::XMFLOAT3 EyePosW = { 0.0f, 0.0f, 0.0f };
     float cbPerObjectPad1 = 0.0f;
     DirectX::XMFLOAT2 RenderTargetSize = { 0.0f, 0.0f };
@@ -62,10 +63,10 @@ struct PassConstants
     DirectX::XMFLOAT4 AmbientLight = { 0.0f, 0.0f, 0.0f, 1.0f };
 
     // Chapter 10 blending demo
-    DirectX::XMFLOAT4 FogColor = { 0.7f, 0.7f, 0.7f, 1.0f };
-    float gFogStart = 5.0f;
-    float gFogRange = 150.0f;
-    DirectX::XMFLOAT2 cbPerObjectPad2;
+    //DirectX::XMFLOAT4 FogColor = { 0.7f, 0.7f, 0.7f, 1.0f };
+    //float gFogStart = 5.0f;
+    //float gFogRange = 150.0f;
+    //DirectX::XMFLOAT2 cbPerObjectPad2;
 
     // Indices [0, NUM_DIR_LIGHTS) are directional lights;
     // indices [NUM_DIR_LIGHTS, NUM_DIR_LIGHTS+NUM_POINT_LIGHTS) are point lights;
@@ -84,6 +85,26 @@ struct InstanceData
     UINT InstancePad0;
     UINT InstancePad1;
     UINT InstancePad2;
+};
+
+// Chapter 21 ambient occlusion
+struct SsaoConstants
+{
+    DirectX::XMFLOAT4X4 Proj;
+    DirectX::XMFLOAT4X4 InvProj;
+    DirectX::XMFLOAT4X4 ProjTex;
+    DirectX::XMFLOAT4   OffsetVectors[14];
+
+    // For SsaoBlur.hlsl
+    DirectX::XMFLOAT4 BlurWeights[3];
+
+    DirectX::XMFLOAT2 InvRenderTargetSize = { 0.0f, 0.0f };
+
+    // Coordinates given in view space.
+    float OcclusionRadius = 0.5f;
+    float OcclusionFadeStart = 0.2f;
+    float OcclusionFadeEnd = 2.0f;
+    float SurfaceEpsilon = 0.05f;
 };
 
 struct Vertex
@@ -151,6 +172,8 @@ public:
     // we would just create a structured buffer large enough to store the
     // instance data for 1000 instances.
     std::unique_ptr<UploadBuffer<InstanceData>> InstanceBuffer = nullptr;
+
+    std::unique_ptr<UploadBuffer<SsaoConstants>> SsaoCB = nullptr; // Chapter 21 ambient occlusion demo
 
     // Fence value to mark commands up to this fence point.  This lets us
     // check if these frame resources are still in use by the GPU.

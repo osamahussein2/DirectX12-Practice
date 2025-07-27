@@ -159,11 +159,13 @@ struct VertexOut
     float4 PosH : SV_POSITION;
     // float3 PosW : POSITION;
     float4 ShadowPosH : POSITION0; // Chapter 20 shadow mapping demo
-    float3 PosW : POSITION1; // Chapter 20 shadow mapping demo
+    float4 SsaoPosH : POSITION1; // Chapter 21 ambient occlusion demo
+    float3 PosW : POSITION2; // Chapter 21 ambient occlusion demo
+    //float3 PosW : POSITION1; // Chapter 20 shadow mapping demo
     float3 NormalW : NORMAL;
     float3 TangentW : TANGENT; // Chapter 19 normal mapping demo
     float2 TexC : TEXCOORD; // Chapter 9 demos
-    float4 ProjTex : TEXCOORD1; // Chapter 20 shadow mapping demo
+    //float4 ProjTex : TEXCOORD1; // Chapter 20 shadow mapping demo
     
     // Chapter 16 demo
     // nointerpolation is used so the index is not interpolated across the triangle.
@@ -235,6 +237,10 @@ VertexOut VS(VertexIn vin)
     // Output vertex attributes for interpolation across triangle.
     //float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
     //vout.TexC = mul(texC, matData.MatTransform).xy;
+    
+    // Chapter 21 ambient occlusion demo
+    // Generate projective tex-coords to project SSAO map onto scene.
+    vout.SsaoPosH = mul(posW, gViewProjTex);
     
     // Chapter 16 demo
     // Output vertex attributes for interpolation across triangle.

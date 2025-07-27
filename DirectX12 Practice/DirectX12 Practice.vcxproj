@@ -153,6 +153,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="Notes\Notes Chapter 21 Ambient Occlusion.txt" />
     <Text Include="Notes\Notes Chapter 19 Normal Mapping.txt" />
     <Text Include="Notes\Notes Chapter 20 Shadow Mapping.txt" />
     <Text Include="Notes\Notes Chapter 18 Cube Mapping.txt" />
@@ -208,6 +209,8 @@
     <ClCompile Include="BezierPatch-Chapter14.cpp" />
     <ClCompile Include="ShadowMap.cpp" />
     <ClCompile Include="Shadows-Chapter20.cpp" />
+    <ClCompile Include="Ssao-Chapter21.cpp" />
+    <ClCompile Include="Ssao.cpp" />
     <ClCompile Include="WavesCS-Chapter13.cpp" />
     <ClCompile Include="VecAdd-Chapter13.cpp" />
     <ClCompile Include="Shapes-Chapter7.cpp" />
@@ -236,6 +239,7 @@
     <ClInclude Include="RenderTarget.h" />
     <ClInclude Include="ShadowMap.h" />
     <ClInclude Include="SobelFilter.h" />
+    <ClInclude Include="Ssao.h" />
     <ClInclude Include="Waves.h" />
   </ItemGroup>
   <ItemGroup>
@@ -253,6 +257,7 @@
     </FxCompile>
     <FxCompile Include="Shaders\boxColor.hlsl" />
     <FxCompile Include="Shaders\Default.hlsl" />
+    <FxCompile Include="Shaders\DrawNormals.hlsl" />
     <FxCompile Include="Shaders\LandAndWavesColor.hlsl" />
     <FxCompile Include="Shaders\LightingUtils.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -268,6 +273,8 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">SobelCS</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
     </FxCompile>
+    <FxCompile Include="Shaders\Ssao.hlsl" />
+    <FxCompile Include="Shaders\SsaoBlur.hlsl" />
     <FxCompile Include="Shaders\Tessellation.hlsl" />
     <FxCompile Include="Shaders\TreeSprite.hlsl" />
     <FxCompile Include="Shaders\VecAdd.hlsl">

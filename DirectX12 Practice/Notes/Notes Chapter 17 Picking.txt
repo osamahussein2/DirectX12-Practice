@@ -121,6 +121,24 @@ bool XM_CALLCONV BoundingSphere::Intersects(FXMVECTOR Origin, FXMVECTOR Directio
 To give a flavor of these tests, we show how to derive the ray/sphere intersection test. The points p on the surface of a
 sphere with center c and radius r satisfy the equation: || p - c || = r
 
+r = || r(t) - c ||
+r^2 = (r(t) - c) * (r(t) - c)
+r^2 = (q + tu - c) * (q + tu - c)
+r^2 = (q - c + tu) * (q - c + tu)
+
+
+For notational convenience, let m = q - c.
+
+(m + tu) * (m  + tu) = r^2
+m * m + 2tm * u + t^2 u * u = r^2
+t^2 u * u + 2tm * u + m * m - r^2 = 0
+
+This is just a quadratic equation with:
+
+a = u * u
+b = 2(m * u)
+c = m * m - r^2
+
 If the ray direction is unit length, then a = u * u 1. If the solution has imaginary components, the ray misses the sphere.
 If the two real solutions are the same, the ray intersects a point tangent to the sphere. If the two real solutions are
 distinct, the ray pierces two points of the sphere. A negative solution indicates an intersection point "behind" the ray.
@@ -135,6 +153,15 @@ bool XM_CALLCONV TriangleTests::Intersects(
  GXMVECTOR V1, // triangle vertex v1
  HXMVECTOR V2, // triangle vertex v2
  float& Dist ); // ray intersection parameter
+
+ r(t) = T(u, v)
+
+ q + tu = v0 + u(v1 - v0) + v(v2 - v0)
+ -tu + u(v1 - v0) + v(v2 - v0) = q - v0
+
+ For notational convenience, let e1 = v1 - v0, e2 = v2 - v0 and m = q - v0
+
+ -tu + u * e1 + v * e2 = m
 
 The demo for this chapter renders a car mesh and allows the user to pick a triangle by pressing the right mouse button, and
 the selected triangle is rendered using a "highlight" material. To render the triangle with a highlight, we need a

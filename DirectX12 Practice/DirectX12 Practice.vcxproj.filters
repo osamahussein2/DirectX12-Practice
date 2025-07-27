@@ -85,6 +85,9 @@
     <Filter Include="Header Files\Chapter 20 header files">
       <UniqueIdentifier>{161b9bbd-2009-44ee-b375-749c9a8c5396}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Chapter 21 header files">
+      <UniqueIdentifier>{b62e9f30-c7db-4dc2-85f0-13f5009c0df1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoxApp.cpp">
@@ -213,6 +216,12 @@
     <ClCompile Include="ShadowMap.cpp">
       <Filter>Source Files\Chapter 20 source files</Filter>
     </ClCompile>
+    <ClCompile Include="Ssao.cpp">
+      <Filter>Source Files\Chapter 21 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Ssao-Chapter21.cpp">
+      <Filter>Source Files\Chapter 21 source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\Notes Introduction to DirectX12.txt">
@@ -278,6 +287,9 @@
     <Text Include="Notes\Notes Chapter 20 Shadow Mapping.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="Notes\Notes Chapter 21 Ambient Occlusion.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FrameResource.h">
@@ -331,6 +343,9 @@
     <ClInclude Include="ShadowMap.h">
       <Filter>Header Files\Chapter 20 header files</Filter>
     </ClInclude>
+    <ClInclude Include="Ssao.h">
+      <Filter>Header Files\Chapter 21 header files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\LandAndWavesColor.hlsl">
@@ -382,6 +397,15 @@
       <Filter>Shader Files</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ShadowDebug.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\DrawNormals.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\SsaoBlur.hlsl">
+      <Filter>Shader Files</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Ssao.hlsl">
       <Filter>Shader Files</Filter>
     </FxCompile>
   </ItemGroup>
