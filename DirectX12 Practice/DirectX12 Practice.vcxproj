@@ -153,6 +153,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="Notes\Notes Chapter 23 Character Animation.txt" />
     <Text Include="Notes\Notes Chapter 22 Quaternions.txt" />
     <Text Include="Notes\Notes Chapter 21 Ambient Occlusion.txt" />
     <Text Include="Notes\Notes Chapter 19 Normal Mapping.txt" />
@@ -204,6 +205,7 @@
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="LitWaves-Chapter8.cpp" />
     <ClCompile Include="InstancingAndCulling-Chapter16.cpp" />
+    <ClCompile Include="LoadM3d.cpp" />
     <ClCompile Include="NormalMap-Chapter19.cpp" />
     <ClCompile Include="PickingApp-Chapter17.cpp" />
     <ClCompile Include="QuatApp-Chapter22.cpp" />
@@ -212,6 +214,8 @@
     <ClCompile Include="BezierPatch-Chapter14.cpp" />
     <ClCompile Include="ShadowMap.cpp" />
     <ClCompile Include="Shadows-Chapter20.cpp" />
+    <ClCompile Include="SkinnedData.cpp" />
+    <ClCompile Include="SkinnedMesh-Chapter23.cpp" />
     <ClCompile Include="Ssao-Chapter21.cpp" />
     <ClCompile Include="Ssao.cpp" />
     <ClCompile Include="WavesCS-Chapter13.cpp" />
@@ -240,8 +244,10 @@
     <ClInclude Include="CubeRenderTarget.h" />
     <ClInclude Include="FrameResource.h" />
     <ClInclude Include="GpuWaves.h" />
+    <ClInclude Include="LoadM3d.h" />
     <ClInclude Include="RenderTarget.h" />
     <ClInclude Include="ShadowMap.h" />
+    <ClInclude Include="SkinnedData.h" />
     <ClInclude Include="SobelFilter.h" />
     <ClInclude Include="Ssao.h" />
     <ClInclude Include="Waves.h" />

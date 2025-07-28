@@ -27,15 +27,15 @@ struct MaterialData
 {
     DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
     DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
-    float Roughness = 64.0f;
+    float Roughness = 0.5f;
 
     // Used in texture mapping.
     DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
 
     UINT DiffuseMapIndex = 0;
-    //UINT NormalMapIndex = 0; // Chapter 19 normal mapping demo
+    UINT NormalMapIndex = 0; // Chapter 19 normal mapping demo
 
-    UINT MaterialPad0;
+    //UINT MaterialPad0;
     UINT MaterialPad1;
     UINT MaterialPad2;
 };
@@ -48,8 +48,8 @@ struct PassConstants
     DirectX::XMFLOAT4X4 InvProj = MathHelper::Identity4x4();
     DirectX::XMFLOAT4X4 ViewProj = MathHelper::Identity4x4();
     DirectX::XMFLOAT4X4 InvViewProj = MathHelper::Identity4x4();
-    //DirectX::XMFLOAT4X4 ViewProjTex = MathHelper::Identity4x4(); // Chapter 21 ambient occlusion demo
-    //DirectX::XMFLOAT4X4 ShadowTransform = MathHelper::Identity4x4(); // Chapter 20 shadow mapping demo
+    DirectX::XMFLOAT4X4 ViewProjTex = MathHelper::Identity4x4(); // Chapter 21 ambient occlusion demo
+    DirectX::XMFLOAT4X4 ShadowTransform = MathHelper::Identity4x4(); // Chapter 20 shadow mapping demo
     DirectX::XMFLOAT3 EyePosW = { 0.0f, 0.0f, 0.0f };
     float cbPerObjectPad1 = 0.0f;
     DirectX::XMFLOAT2 RenderTargetSize = { 0.0f, 0.0f };
@@ -107,6 +107,12 @@ struct SsaoConstants
     float SurfaceEpsilon = 0.05f;
 };
 
+// Chapter 23 character animation demo
+struct SkinnedConstants
+{
+    DirectX::XMFLOAT4X4 BoneTransforms[96];
+};
+
 struct Vertex
 {
     Vertex() = default;
@@ -122,7 +128,18 @@ struct Vertex
 
     /* In our system, we will not store the bitangent vector B directly in memory. Instead, we will compute B = N × T when
     we need B, where N is the usual averaged vertex normal (Chapter 19 normal mapping demo) */
-    //DirectX::XMFLOAT3 TangentU;
+    DirectX::XMFLOAT3 TangentU;
+};
+
+// Chapter 23 character animation demo
+struct SkinnedVertex
+{
+    DirectX::XMFLOAT3 Pos;
+    DirectX::XMFLOAT3 Normal;
+    DirectX::XMFLOAT2 TexC;
+    DirectX::XMFLOAT3 TangentU;
+    DirectX::XMFLOAT3 BoneWeights;
+    BYTE BoneIndices[4];
 };
 
 // Stores the resources needed for the CPU to build the command lists
@@ -135,7 +152,8 @@ public:
     //FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT waveVertCount);
     FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount);
     //FrameResource(ID3D12Device* device, UINT passCount, UINT maxInstanceCount, UINT materialCount); // Chapter 16 demo
-    FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount, UINT waveVertCount);
+    //FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT materialCount, UINT waveVertCount);
+    FrameResource(ID3D12Device* device, UINT passCount, UINT objectCount, UINT skinnedObjectCount, UINT materialCount);
     FrameResource(const FrameResource& rhs) = delete;
     FrameResource& operator=(const FrameResource& rhs) = delete;
     ~FrameResource();
@@ -174,6 +192,8 @@ public:
     std::unique_ptr<UploadBuffer<InstanceData>> InstanceBuffer = nullptr;
 
     std::unique_ptr<UploadBuffer<SsaoConstants>> SsaoCB = nullptr; // Chapter 21 ambient occlusion demo
+
+    std::unique_ptr<UploadBuffer<SkinnedConstants>> SkinnedCB = nullptr; // Chapter 23 character animation demo
 
     // Fence value to mark commands up to this fence point.  This lets us
     // check if these frame resources are still in use by the GPU.

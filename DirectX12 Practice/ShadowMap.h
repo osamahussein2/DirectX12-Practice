@@ -1,5 +1,15 @@
 #include "d3dUtil.h"
 
+enum class CubeMapFace : int
+{
+	PositiveX = 0,
+	NegativeX = 1,
+	PositiveY = 2,
+	NegativeY = 3,
+	PositiveZ = 4,
+	NegativeZ = 5
+};
+
 /* ShadowMap helps us store the scene depth from the perspective of the light source. It simply encapsulates a depth/
 stencil buffer, necessary views, and viewport. A depth/stencil buffer used for shadow mapping is called a shadow map 
 (Chapter 20 shadow mapping demo) */

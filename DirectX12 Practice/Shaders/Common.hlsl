@@ -48,7 +48,10 @@ Texture2D gSsaoMap : register(t2);
 //Texture2D gTextureMaps[10] : register(t2);
 
 // Chapter 21 ambient occlusion demo
-Texture2D gTextureMaps[10] : register(t3);
+//Texture2D gTextureMaps[10] : register(t3);
+
+// Chapter 23 character animations demo
+Texture2D gTextureMaps[48] : register(t3);
 
 // Put in space1, so the texture array does not overlap with these resources.
 // The texture array will occupy registers t0, t1, ..., t3 in space0.
@@ -73,8 +76,16 @@ cbuffer cbPerObject : register(b0)
     uint gObjPad2;
 };
 
+// Chapter 23 character animation demo
+/* The final bone transforms are stored in a constant buffer where they are accessed in the vertex shader to do the
+animation transformations */
+cbuffer cbSkinned : register(b1)
+{
+    float4x4 gBoneTransforms[96];
+};
+
 // Constant data that varies per material.
-cbuffer cbPass : register(b1)
+cbuffer cbPass : register(b2) // used to be b1, only for Chapter 23 demo
 {
     float4x4 gView;
     float4x4 gInvView;

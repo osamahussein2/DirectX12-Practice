@@ -1,0 +1,92 @@
+Characters are complex because they have many moving parts that all move at the same time. Consider a human running - every
+bone is moving in some way. Creating such complicated animations is not practical by hand, and there are special modeling
+and animation tools for this task.
+
+Many objects are composed of parts, with a parent-child relationship, where one or more child objects can move independently
+on their own (with possible physical motion constraints - e.g., human joints have a particular range of motion), but are
+also forced to move when their parent moves. For example, consider an arm divided into the parts: upper arm, forearm, and
+hand. The hand can rotate in isolation about its wrist joint; however, if the forearm rotates about its elbow joint, then
+the hand must rotate with it.
+
+Because all the coordinate systems exist in the same universe, we can relate them; in particular, for an arbitrary instant
+in time (we fix time and study a snapshot because, in general, these mesh hierarchies are animated and so these
+relationships change as a function of time), we describe each coordinate system relative to its parent coordinate system.
+
+The highlighted chain of bones in the figure is called a skeleton. A skeleton provides a natural hierarchal structure for
+driving a character animation system. The skeleton is surrounded by an exterior skin, which we model as 3D geometry
+(vertices and polygons). Initially, the skin vertices are relative to the bind space, which is the local coordinate system
+that the entire skin is defined relative to (usually the root coordinate system).  Each bone in the skeleton influences the
+shape and position of the subset of skin it influences (i.e., the vertices it influences), just like in real life. Thus, as
+we animate the skeleton, the attached skin is animated accordingly to reflect the current pose of the skeleton.
+
+Labeling the n bones with an integer number 0, 1, …, n - 1, we have the following formula for expressing the ith bone’s
+to-root transformation:
+
+toRoot i = toParent i * toRoot p
+
+Here, p is the bone label of the parent of bone i. Does this make sense? Indeed, toRoot p gives us a direct map that sends
+geometry from the coordinate system of bone p to the coordinate system of the root.
+
+The only issue is that for this to work, when we go to process the ith bone, we must have already computed the to-root
+transformation of its parent. However, if we traverse the tree top-down, then a parent’s to-root transformation will always
+be computed before its children’s to-root transformation.
+
+We first transform the vertices influenced by a bone from bind space to the space of the influencing bone via the offset
+transform. Then, once in the space of the bone, we apply the bone’s to-root transformation to transform the vertices from
+the space of the bone to the space of the root bone. The final transformation is the combination of the offset transform,
+followed by the to-root transform.
+
+The final transform combines a bone’s offset transform with its to-root transform. Mathematically, the final transformation
+matrix of the ith bone Fi is given by: F i = offset i * toRoot i
+
+Animating a skeleton is not much harder than animating a single object. Whereas we can think of a single object as a single
+bone, a skeleton is just a collection of connected bones. We will assume that each bone can move independently. Therefore,
+to animate a skeleton, we just animate each bone locally. Then after each bone has done its local animation, we take into
+consideration the movement of its ancestors, and transform it to the root space.
+
+We define an animation clip to be a list of animations (one for each bone in the skeleton) that work together to form a
+specific animation of the skeleton. For example, "walking," "running," "fighting," "ducking," and "jumping" are examples
+of animation clips.
+
+Animating the skin of vertices that cover the skeleton. The algorithm for doing this is called vertex blending.
+
+The strategy of vertex blending is as follows. We have an underlying bone hierarchy, but the skin itself is one continuous
+mesh (i.e., we do not break the mesh up into parts to correspond with each bone and animate them individually). Moreover,
+one or more bones can influence a vertex of the skin; the net result being determined by a weighted average of the
+influencing bones' final transforms (the weights are specified by an artist when the model is being made and saved to file).
+With this setup, a smooth transitional blend can be achieved at joints (which are typically the troubled areas), thereby
+making the skin feel elastic.
+
+A continuous mesh whose vertices have this format is ready for vertex blending, and we call it a skinned mesh.
+
+At the beginning, the .m3d format defines a header which specifies the number of materials, vertices, triangles, bones, and
+animations that make up the model:
+
+1. #Materials: The number of distinct materials the mesh uses.
+2. #Vertices: The number of vertices of the mesh.
+3. #Triangles: The number of triangles in the mesh.
+4. #Bones: The number of bones in the mesh.
+5. #AnimationClips: The number of animation clips in the mesh.
+
+The file contains the material data we are familiar with (diffuse, roughness, etc.), but also contains additional
+information such as the textures to apply, whether alpha clipping needs to be applied, and the material type name. The
+material type name is used to indicate which shader programs are needed for the given material.
+
+A mesh consists of one or more subsets. A subset is a group of triangles in a mesh that can all be rendered using the same
+material.
+
+There is a subset corresponding to each material and the ith subset corresponds to the ith material. The ith subset defines
+a contiguous block of geometry that should be rendered with the ith material.
+
+The hierarchy chunk stores the hierarchy array - an array of integers such that the ith array entry gives the parent index
+of the ith bone.
+
+The last chunk we need to read are the animation clips. Each animation has a readable name and a list of key frames for each
+bone in the skeleton. Each key frame stores the time position, the translation vector specifying the position of the bone,
+the scaling vector specifying the bone scale, and the quaternion specifying the orientation of the bone.
+
+To implement vertex blending, we store an array of final transformation matrices for each bone (the array is called a matrix
+palette). (The ith bone’s final transformation is defined as F i = offset i toRoot i - that is, the bone’s offset
+transformation followed by its to-root transformation.) Then, for each vertex, we store a list of vertex weights and matrix
+palette indices. The matrix palette indices of a vertex identify the final transformations of the bones that influence the
+vertex.
