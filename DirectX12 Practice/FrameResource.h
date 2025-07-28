@@ -27,15 +27,15 @@ struct MaterialData
 {
     DirectX::XMFLOAT4 DiffuseAlbedo = { 1.0f, 1.0f, 1.0f, 1.0f };
     DirectX::XMFLOAT3 FresnelR0 = { 0.01f, 0.01f, 0.01f };
-    float Roughness = 0.5f;
+    float Roughness = 64.0f;
 
     // Used in texture mapping.
     DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
 
     UINT DiffuseMapIndex = 0;
-    UINT NormalMapIndex = 0; // Chapter 19 normal mapping demo
+    //UINT NormalMapIndex = 0; // Chapter 19 normal mapping demo
 
-    //UINT MaterialPad0;
+    UINT MaterialPad0;
     UINT MaterialPad1;
     UINT MaterialPad2;
 };
@@ -48,8 +48,8 @@ struct PassConstants
     DirectX::XMFLOAT4X4 InvProj = MathHelper::Identity4x4();
     DirectX::XMFLOAT4X4 ViewProj = MathHelper::Identity4x4();
     DirectX::XMFLOAT4X4 InvViewProj = MathHelper::Identity4x4();
-    DirectX::XMFLOAT4X4 ViewProjTex = MathHelper::Identity4x4(); // Chapter 21 ambient occlusion demo
-    DirectX::XMFLOAT4X4 ShadowTransform = MathHelper::Identity4x4(); // Chapter 20 shadow mapping demo
+    //DirectX::XMFLOAT4X4 ViewProjTex = MathHelper::Identity4x4(); // Chapter 21 ambient occlusion demo
+    //DirectX::XMFLOAT4X4 ShadowTransform = MathHelper::Identity4x4(); // Chapter 20 shadow mapping demo
     DirectX::XMFLOAT3 EyePosW = { 0.0f, 0.0f, 0.0f };
     float cbPerObjectPad1 = 0.0f;
     DirectX::XMFLOAT2 RenderTargetSize = { 0.0f, 0.0f };
@@ -122,7 +122,7 @@ struct Vertex
 
     /* In our system, we will not store the bitangent vector B directly in memory. Instead, we will compute B = N × T when
     we need B, where N is the usual averaged vertex normal (Chapter 19 normal mapping demo) */
-    DirectX::XMFLOAT3 TangentU;
+    //DirectX::XMFLOAT3 TangentU;
 };
 
 // Stores the resources needed for the CPU to build the command lists

@@ -88,6 +88,9 @@
     <Filter Include="Header Files\Chapter 21 header files">
       <UniqueIdentifier>{b62e9f30-c7db-4dc2-85f0-13f5009c0df1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Chapter 22 header files">
+      <UniqueIdentifier>{571f21bc-9c70-473b-910d-6fd1f7bd66cd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BoxApp.cpp">
@@ -222,6 +225,12 @@
     <ClCompile Include="Ssao-Chapter21.cpp">
       <Filter>Source Files\Chapter 21 source files</Filter>
     </ClCompile>
+    <ClCompile Include="QuatApp-Chapter22.cpp">
+      <Filter>Source Files\Chapter 22 source files</Filter>
+    </ClCompile>
+    <ClCompile Include="AnimationHelper.cpp">
+      <Filter>Source Files\Chapter 22 source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Notes\Notes Introduction to DirectX12.txt">
@@ -290,6 +299,9 @@
     <Text Include="Notes\Notes Chapter 21 Ambient Occlusion.txt">
       <Filter>Resource Files</Filter>
     </Text>
+    <Text Include="Notes\Notes Chapter 22 Quaternions.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FrameResource.h">
@@ -345,6 +357,9 @@
     </ClInclude>
     <ClInclude Include="Ssao.h">
       <Filter>Header Files\Chapter 21 header files</Filter>
+    </ClInclude>
+    <ClInclude Include="AnimationHelper.h">
+      <Filter>Header Files\Chapter 22 header files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

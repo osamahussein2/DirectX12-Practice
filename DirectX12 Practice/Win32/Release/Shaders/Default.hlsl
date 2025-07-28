@@ -18,10 +18,10 @@
 #endif
 
 // Include structures and functions for lighting.
-//#include "LightingUtils.hlsl"
+#include "LightingUtils.hlsl"
 
 // Include common HLSL code.
-#include "Common.hlsl"
+//#include "Common.hlsl"
 
 // Chapter 16 demo
 /*struct InstanceData
@@ -35,7 +35,7 @@
 };*/
 
 // Chapter 15 CameraAndDynamicIndexing demo
-/*struct MaterialData
+struct MaterialData
 {
     float4 DiffuseAlbedo;
     float3 FresnelR0;
@@ -45,7 +45,7 @@
     uint MatPad0;
     uint MatPad1;
     uint MatPad2;
-};*/
+};
 
 //Texture2D gDiffuseMap : register(t0);
 //Texture2D gDisplacementMap : register(t1); // Chapter 13 WavesCS demo
@@ -66,6 +66,12 @@
 // sizes and formats, making it more flexible than texture arrays.
 //Texture2D gDiffuseMap[7] : register(t0);
 
+// Chapter 22 quaternions demo
+// An array of textures, which is only supported in shader model 5.1+.
+// Unlike Texture2DArray, the textures in this array can be different
+// sizes and formats, making it more flexible than texture arrays.
+Texture2D gDiffuseMap[5] : register(t0);
+
 // Chapter 16 demo
 // Put in space1, so the texture array does not overlap with these.
 // The texture array above will occupy registers t0, t1, ..., t6 in
@@ -73,20 +79,20 @@
 //StructuredBuffer<InstanceData> gInstanceData : register(t0, space1);
 //StructuredBuffer<MaterialData> gMaterialData : register(t1, space1);
 
-// Chapter 17 demo
-//StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
+// Chapter 17 demo and chapter 22 demo as well
+StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
 
 //SamplerState gsamLinear : register(s0); // For Crate demo (Chapter 9)
 
-//SamplerState gsamPointWrap : register(s0);
-//SamplerState gsamPointClamp : register(s1);
-//SamplerState gsamLinearWrap : register(s2);
-//SamplerState gsamLinearClamp : register(s3);
-//SamplerState gsamAnisotropicWrap : register(s4);
-//SamplerState gsamAnisotropicClamp : register(s5);
+SamplerState gsamPointWrap : register(s0);
+SamplerState gsamPointClamp : register(s1);
+SamplerState gsamLinearWrap : register(s2);
+SamplerState gsamLinearClamp : register(s3);
+SamplerState gsamAnisotropicWrap : register(s4);
+SamplerState gsamAnisotropicClamp : register(s5);
 
 // Constant data that varies per frame.
-/*cbuffer cbPerObject : register(b0)
+cbuffer cbPerObject : register(b0)
 {
     float4x4 gWorld;
     float4x4 gTexTransform; // Chapter 9 texturing demo
@@ -101,10 +107,10 @@
     uint gObjPad0;
     uint gObjPad1;
     uint gObjPad2;
-};*/
+};
 
 // Constant data that varies per material.
-/*cbuffer cbPass : register(b1) // used to be register(b1), this is for Chapter 16 demo only
+cbuffer cbPass : register(b1) // used to be register(b1), but b0 is for Chapter 16 demo only
 {
     float4x4 gView;
     float4x4 gInvView;
@@ -136,7 +142,7 @@
     // indices [NUM_DIR_LIGHTS+NUM_POINT_LIGHTS, NUM_DIR_LIGHTS+NUM_POINT_LIGHT+NUM_SPOT_LIGHTS)
     // are spot lights for a maximum of MaxLights per object.
     Light gLights[MaxLights];
-};*/
+};
 
 /*cbuffer cbMaterial : register(b2)
 {
@@ -151,19 +157,19 @@ struct VertexIn
     float3 PosL : POSITION;
     float3 NormalL : NORMAL;
     float2 TexC : TEXCOORD; // Chapter 9 demos
-    float3 TangentU : TANGENT; // Chapter 19 normal mapping demo
+    //float3 TangentU : TANGENT; // Chapter 19 normal mapping demo
 };
 
 struct VertexOut
 {
     float4 PosH : SV_POSITION;
-    // float3 PosW : POSITION;
-    float4 ShadowPosH : POSITION0; // Chapter 20 shadow mapping demo
-    float4 SsaoPosH : POSITION1; // Chapter 21 ambient occlusion demo
-    float3 PosW : POSITION2; // Chapter 21 ambient occlusion demo
+    float3 PosW : POSITION;
+    //float4 ShadowPosH : POSITION0; // Chapter 20 shadow mapping demo
+    //float4 SsaoPosH : POSITION1; // Chapter 21 ambient occlusion demo
+    //float3 PosW : POSITION2; // Chapter 21 ambient occlusion demo
     //float3 PosW : POSITION1; // Chapter 20 shadow mapping demo
     float3 NormalW : NORMAL;
-    float3 TangentW : TANGENT; // Chapter 19 normal mapping demo
+    //float3 TangentW : TANGENT; // Chapter 19 normal mapping demo
     float2 TexC : TEXCOORD; // Chapter 9 demos
     //float4 ProjTex : TEXCOORD1; // Chapter 20 shadow mapping demo
     
@@ -218,7 +224,7 @@ VertexOut VS(VertexIn vin)
     vout.NormalW = mul(vin.NormalL, (float3x3) gWorld);
     
     // Chapter 19 normal mapping demo
-    vout.TangentW = mul(vin.TangentU, (float3x3) gWorld);
+    //vout.TangentW = mul(vin.TangentU, (float3x3) gWorld);
 
     // Transform to homogeneous clip space.
     vout.PosH = mul(posW, gViewProj);
@@ -240,7 +246,7 @@ VertexOut VS(VertexIn vin)
     
     // Chapter 21 ambient occlusion demo
     // Generate projective tex-coords to project SSAO map onto scene.
-    vout.SsaoPosH = mul(posW, gViewProjTex);
+    //vout.SsaoPosH = mul(posW, gViewProjTex);
     
     // Chapter 16 demo
     // Output vertex attributes for interpolation across triangle.
@@ -250,7 +256,7 @@ VertexOut VS(VertexIn vin)
     // Chapter 20 shadow mapping demo
     // The transformation matrix gShadowTransform transforms from world space to the shadow map texture space
     // Generate projective tex-coords to project shadow map onto scene.
-    vout.ShadowPosH = mul(posW, gShadowTransform);
+    //vout.ShadowPosH = mul(posW, gShadowTransform);
 
     return vout;
 }
@@ -290,21 +296,21 @@ float4 PS(VertexOut pin) : SV_Target
     float4 diffuseAlbedo = matData.DiffuseAlbedo;
     float3 fresnelR0 = matData.FresnelR0;
     float roughness = matData.Roughness;
-    uint diffuseMapIndex = matData.DiffuseMapIndex;
-    uint normalMapIndex = matData.NormalMapIndex; // Chapter 19 normal mapping demo
+    uint diffuseTexIndex = matData.DiffuseMapIndex;
+    //uint normalMapIndex = matData.NormalMapIndex; // Chapter 19 normal mapping demo
     
     // Dynamically look up the texture in the array.
-    //diffuseAlbedo *= gDiffuseMap[diffuseTexIndex].Sample(gsamLinearWrap, pin.TexC);
+    diffuseAlbedo *= gDiffuseMap[diffuseTexIndex].Sample(gsamLinearWrap, pin.TexC);
 
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);
     
     // Chapter 19 normal mapping demo
-    float4 normalMapSample = gTextureMaps[normalMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
-    float3 bumpedNormalW = NormalSampleToWorldSpace(normalMapSample.rgb, pin.NormalW, pin.TangentW);
+    //float4 normalMapSample = gTextureMaps[normalMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
+    //float3 bumpedNormalW = NormalSampleToWorldSpace(normalMapSample.rgb, pin.NormalW, pin.TangentW);
     
     // Chapter 19 normal mapping demo
-    diffuseAlbedo *= gTextureMaps[diffuseMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
+    //diffuseAlbedo *= gTextureMaps[diffuseMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
 
     // Vector from point being lit to eye. 
     float3 toEyeW = normalize(gEyePosW - pin.PosW);
@@ -316,29 +322,29 @@ float4 PS(VertexOut pin) : SV_Target
     
     // Chapter 20 shadow mapping demo
     // Only the first light casts a shadow.
-    float3 shadowFactor = float3(1.0f, 1.0f, 1.0f);
-    shadowFactor[0] = CalcShadowFactor(pin.ShadowPosH);
+    //float3 shadowFactor = float3(1.0f, 1.0f, 1.0f);
+    //shadowFactor[0] = CalcShadowFactor(pin.ShadowPosH);
 
-    //const float shininess = 1.0f - roughness;
+    const float shininess = 1.0f - roughness;
     // Alpha channel stores shininess at per-pixel level (Chapter 19 normal mapping demo
-    const float shininess = (1.0f - roughness) * normalMapSample.a;
+    //const float shininess = (1.0f - roughness) * normalMapSample.a;
     Material mat = { diffuseAlbedo, fresnelR0, shininess };
-    //float3 shadowFactor = 1.0f;
-    //float4 directLight = ComputeLighting(gLights, mat, pin.PosW, pin.NormalW, toEyeW, shadowFactor);
+    float3 shadowFactor = 1.0f;
+    float4 directLight = ComputeLighting(gLights, mat, pin.PosW, pin.NormalW, toEyeW, shadowFactor);
     
     // Chapter 19 normal mapping demo
-    float4 directLight = ComputeLighting(gLights, mat, pin.PosW, bumpedNormalW, toEyeW, shadowFactor);
+    //float4 directLight = ComputeLighting(gLights, mat, pin.PosW, bumpedNormalW, toEyeW, shadowFactor);
 
     float4 litColor = ambient + directLight;
     
     // Compute the reflection vector per-pixel and then use it to sample the environment map
     // Add in specular reflections.
     //float3 r = reflect(-toEyeW, pin.NormalW);
-    float3 r = reflect(-toEyeW, bumpedNormalW); // Chapter 19 normal mapping demo
-    float4 reflectionColor = gCubeMap.Sample(gsamLinearWrap, r);
+    //float3 r = reflect(-toEyeW, bumpedNormalW); // Chapter 19 normal mapping demo
+    //float4 reflectionColor = gCubeMap.Sample(gsamLinearWrap, r);
     //float3 fresnelFactor = SchlickFresnel(fresnelR0, pin.NormalW, r);
-    float3 fresnelFactor = SchlickFresnel(fresnelR0, bumpedNormalW, r); // Chapter 19 normal mapping demo
-    litColor.rgb += shininess * fresnelFactor * reflectionColor.rgb;
+    //float3 fresnelFactor = SchlickFresnel(fresnelR0, bumpedNormalW, r); // Chapter 19 normal mapping demo
+    //litColor.rgb += shininess * fresnelFactor * reflectionColor.rgb;
 
 #ifdef FOG
     

@@ -153,6 +153,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="Notes\Notes Chapter 22 Quaternions.txt" />
     <Text Include="Notes\Notes Chapter 21 Ambient Occlusion.txt" />
     <Text Include="Notes\Notes Chapter 19 Normal Mapping.txt" />
     <Text Include="Notes\Notes Chapter 20 Shadow Mapping.txt" />
@@ -177,6 +178,7 @@
     <Text Include="Notes\Notes Introduction to DirectX12.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AnimationHelper.cpp" />
     <ClCompile Include="Blending-Chapter10.cpp" />
     <ClCompile Include="BlurApp-Chapter13.cpp" />
     <ClCompile Include="BlurFilter.cpp" />
@@ -204,6 +206,7 @@
     <ClCompile Include="InstancingAndCulling-Chapter16.cpp" />
     <ClCompile Include="NormalMap-Chapter19.cpp" />
     <ClCompile Include="PickingApp-Chapter17.cpp" />
+    <ClCompile Include="QuatApp-Chapter22.cpp" />
     <ClCompile Include="RenderTarget.cpp" />
     <ClCompile Include="BasicTessellation-Chapter14.cpp" />
     <ClCompile Include="BezierPatch-Chapter14.cpp" />
@@ -223,6 +226,7 @@
     <ClCompile Include="Waves.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AnimationHelper.h" />
     <ClInclude Include="BlurFilter.h" />
     <ClInclude Include="Common\Camera.h" />
     <ClInclude Include="Common\d3dApp.h" />

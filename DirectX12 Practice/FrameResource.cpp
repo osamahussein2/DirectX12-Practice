@@ -43,7 +43,7 @@ FrameResource::FrameResource(ID3D12Device* device, UINT passCount, UINT objectCo
 
     PassCB = std::make_unique<UploadBuffer<PassConstants>>(device, passCount, true);
     //MaterialCB = std::make_unique<UploadBuffer<MaterialConstants>>(device, materialCount, true);
-    SsaoCB = std::make_unique<UploadBuffer<SsaoConstants>>(device, 1, true); // Chapter 21 ambient occlusion demo
+    //SsaoCB = std::make_unique<UploadBuffer<SsaoConstants>>(device, 1, true); // Chapter 21 ambient occlusion demo
     ObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(device, objectCount, true);
 
     // Chapter 14 CameraAndDynamicIndexing demo
